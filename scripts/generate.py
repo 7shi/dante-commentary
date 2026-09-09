@@ -12,7 +12,7 @@ from pathlib import Path
 from dante_corpus import ref
 from llm7shi import Client
 
-DEFAULT_OUT_DIR = Path(__file__).parent / "test"
+DEFAULT_OUT_DIR = Path(__file__).parent.parent / "test"
 
 CANTICLE_NAMES = {
     "inferno": "地獄篇",

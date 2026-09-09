@@ -32,13 +32,13 @@ your-workspace/
 
 ## ファイル構成
 
-- `main.py` — 記事と対訳を生成する
+- `scripts/generate.py` — 記事と対訳を生成する
 - `fable/`、`astra/`、`gemma4-26b/` — モデルごとのサンプル出力
 
 ## 使い方
 
 ```bash
-uv run main.py [canticle] [-c CANTO] [-m MODEL] [-r ROUNDS] [--no-think] [--out-dir DIR]
+uv run scripts/generate.py [canticle] [-c CANTO] [-m MODEL] [-r ROUNDS] [--no-think] [--out-dir DIR]
 ```
 
 | 引数 | 説明 | デフォルト |
@@ -58,7 +58,7 @@ uv run main.py [canticle] [-c CANTO] [-m MODEL] [-r ROUNDS] [--no-think] [--out-
 **実行例**
 
 ```bash
-uv run main.py inferno -c 1 -m openai:gpt-6-astra --out-dir astra
+uv run scripts/generate.py inferno -c 1 -m openai:gpt-6-astra --out-dir astra
 ```
 
 ## 対訳の生成
