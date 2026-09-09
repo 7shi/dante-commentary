@@ -6,6 +6,8 @@ instructions in PROMPT.
 """
 
 import argparse
+import re
+import sys
 from pathlib import Path
 from dante_corpus import ref
 from llm7shi import Client
@@ -26,10 +28,99 @@ PROMPT = """
 - 引用に続けて、その行が示す寓意・背景の解説を地の文で書いてください。
 """.strip()
 
+TRANSLATE_PROMPT = """
+添付はダンテ『神曲』{canticle_name}第{number}歌の原文と日本語訳を1行ずつ交互に並べたものです。訳が {placeholder} となっている行の日本語訳を補ってください。
 
-def canto_text(canticle: str, number: int) -> str:
-    lines = ref(f"{canticle} {number}")
+- 訳が {placeholder} となっている行だけを対象とし、`行番号 日本語訳` の形式で1行に1つずつ出力してください。
+- 既存の訳の文体に合わせ、前後の文脈がつながるように訳してください。
+- 出力は補った訳の行だけとしてください。
+- 各行には訳文そのものを書いてください。{placeholder} は出力に含めないでください。
+""".strip()
+
+
+PLACEHOLDER = "**NEED TRANSLATE**"
+
+QUOTE_RE = re.compile(r"^>\s*(\d+)\s+(.*?)\s*$")
+TRANS_RE = re.compile(r"^>\s*[（(](.*)[）)][」』]*\s*$")
+FILLED_RE = re.compile(r"^\s*(\d+)\s+(.+?)\s*$")
+MARKER_RE = re.compile(rf"^\**\s*{re.escape(PLACEHOLDER.strip('*'))}\s*\**\s*")
+JAPANESE_RE = re.compile(r"[ぁ-んァ-ヶ一-龥]")
+
+
+def clean_translation(text: str) -> str:
+    """Drop the placeholder, which the model sometimes echoes ahead of the
+    translation instead of replacing it, with or without its emphasis marks."""
+    return MARKER_RE.sub("", text.strip())
+
+
+def is_translated(trans: str, original: str) -> bool:
+    """The model sometimes copies the Italian line instead of translating it."""
+    return bool(trans) and trans != original and bool(JAPANESE_RE.search(trans))
+
+
+def canto_text(lines) -> str:
     return "\n".join(f"{line.no} {line.text}" for line in lines)
+
+
+def extract_translations(commentary: str, lines) -> dict[int, str]:
+    """Collect `> 行番号 原文` / `> （日本語訳）` pairs from a commentary.
+
+    Pairs whose quoted original does not match the corpus line are dropped, so
+    that a partial or misquoted line is left untranslated instead of wrong.
+    """
+    originals = {line.no: line.text for line in lines}
+    md_lines = commentary.splitlines()
+    translations: dict[int, str] = {}
+    for i, md_line in enumerate(md_lines[:-1]):
+        if not (quote := QUOTE_RE.match(md_line)):
+            continue
+        if not (trans := TRANS_RE.match(md_lines[i + 1])):
+            continue
+        no = int(quote.group(1))
+        if originals.get(no) != quote.group(2):
+            print(f"skip line {no}: quoted text does not match", file=sys.stderr)
+            continue
+        translations[no] = trans.group(1)
+    return translations
+
+
+def interleaved_text(lines, translations: dict[int, str], placeholder: str = "") -> str:
+    """Original and translation on alternating lines.
+
+    Untranslated lines are blank in the saved file, but carry a placeholder when
+    the text is sent to the model, which overlooks blank lines easily.
+    """
+    return "\n".join(
+        f"{line.no} {line.text}\n{translations.get(line.no, placeholder)}"
+        for line in lines
+    )
+
+
+def parse_interleaved(interleaved: str, lines) -> dict[int, str]:
+    """Read back a saved interleaved file, keeping the lines already translated."""
+    originals = {line.no: line.text for line in lines}
+    text_lines = interleaved.splitlines()
+    translations: dict[int, str] = {}
+    for i, text_line in enumerate(text_lines[:-1]):
+        if not (match := FILLED_RE.match(text_line)):
+            continue
+        no = int(match.group(1))
+        trans = clean_translation(text_lines[i + 1])
+        if originals.get(no) == match.group(2) and is_translated(trans, match.group(2)):
+            translations[no] = trans
+    return translations
+
+
+def parse_filled(filled: str, missing: set[int], lines) -> dict[int, str]:
+    """Collect `行番号 日本語訳` lines, keeping only the requested line numbers."""
+    originals = {line.no: line.text for line in lines}
+    translations: dict[int, str] = {}
+    for text_line in filled.splitlines():
+        if match := FILLED_RE.match(text_line):
+            no, trans = int(match.group(1)), clean_translation(match.group(2))
+            if no in missing and is_translated(trans, originals.get(no, "")):
+                translations[no] = trans
+    return translations
 
 
 def main():
@@ -52,6 +143,17 @@ def main():
         help="Model name with optional vendor prefix (e.g. openai:gpt-4.1-mini)",
     )
     parser.add_argument(
+        "-r", "--rounds",
+        type=int,
+        default=5,
+        help="Max translation passes to fill remaining lines (default: 5)",
+    )
+    parser.add_argument(
+        "--no-think",
+        action="store_true",
+        help="Disable thinking output (include_thoughts=False)",
+    )
+    parser.add_argument(
         "--out-dir",
         type=Path,
         default=DEFAULT_OUT_DIR,
@@ -59,16 +161,67 @@ def main():
     )
     args = parser.parse_args()
 
-    text = canto_text(args.canticle, args.canto)
+    lines = ref(f"{args.canticle} {args.canto}")
+    text = canto_text(lines)
     canticle_name = CANTICLE_NAMES.get(args.canticle, args.canticle)
-    prompt = PROMPT.format(canticle_name=canticle_name, number=args.canto)
-    client = Client(model=args.model, show_params=False, keep_history=False)
-    result = client([text, prompt])
 
-    out_path = args.out_dir / args.canticle / f"{args.canto:02d}.md"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(result.text)
-    print(f"\nSaved to {out_path}")
+    out_dir = args.out_dir / args.canticle
+    out_path = out_dir / f"{args.canto:02d}.md"
+    trans_path = out_dir / f"{args.canto:02d}.txt"
+    client = Client(
+        model=args.model,
+        include_thoughts=not args.no_think,
+        show_params=False,
+        keep_history=False,
+    )
+
+    if trans_path.exists():
+        # Resume: the saved file already holds every translation extracted so far.
+        print(f"Resuming from {trans_path}")
+        translations = parse_interleaved(trans_path.read_text(), lines)
+    else:
+        if out_path.exists():
+            print(f"Skipped (already exists): {out_path}")
+            commentary = out_path.read_text()
+        else:
+            prompt = PROMPT.format(canticle_name=canticle_name, number=args.canto)
+            commentary = client([text, prompt]).text
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(commentary)
+            print(f"\nSaved to {out_path}")
+        translations = extract_translations(commentary, lines)
+
+    saved = trans_path.read_text() if trans_path.exists() else ""
+
+    def save():
+        # Saved every round, so an interrupted run can resume where it left off.
+        nonlocal saved
+        content = interleaved_text(lines, translations) + "\n"
+        if content != saved:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            trans_path.write_text(content)
+            saved = content
+            print(f"\nSaved to {trans_path}")
+
+    prompt = TRANSLATE_PROMPT.format(
+        canticle_name=canticle_name, number=args.canto, placeholder=PLACEHOLDER
+    )
+    for round_no in range(1, args.rounds + 1):
+        missing = {line.no for line in lines if line.no not in translations}
+        if not missing:
+            break
+        print(f"\n--- round {round_no}: {len(missing)} lines left ---")
+        filled = client(
+            [interleaved_text(lines, translations, PLACEHOLDER), prompt]
+        ).text
+        if not (added := parse_filled(filled, missing, lines)):
+            print("\nno progress, giving up", file=sys.stderr)
+            break
+        translations |= added
+        save()
+    save()  # in case the loop ended before any round wrote the file
+    if remaining := sorted(line.no for line in lines if line.no not in translations):
+        print(f"\nstill untranslated: {remaining}", file=sys.stderr)
 
 
 if __name__ == "__main__":

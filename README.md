@@ -1,6 +1,6 @@
 # dante-commentary
 
-ダンテ『神曲』の各歌について、寓意や背景を解説し、イタリア語原文からの引用を交えた日本語の解説記事（Markdown）を生成します。原典テキストは
+ダンテ『神曲』の各歌について、寓意や背景を解説し、イタリア語原文からの引用を交えた日本語の解説記事（Markdown）を生成します。続けて、その歌の全行の対訳（原文と日本語訳を1行ずつ交互に並べたテキスト）も生成します。原典テキストは
 [dante_corpus](https://github.com/7shi/dante-corpus) 経由で取得し、
 [llm7shi](https://github.com/7shi/llm7shi) を通じてLLMに送信します。
 
@@ -32,13 +32,13 @@ your-workspace/
 
 ## ファイル構成
 
-- `main.py` — 記事を生成する
-- `fable/` — サンプル出力
+- `main.py` — 記事と対訳を生成する
+- `fable/`、`astra/`、`gemma4-26b/` — モデルごとのサンプル出力
 
 ## 使い方
 
 ```bash
-uv run main.py [canticle] [-c CANTO] [-m MODEL] [--out-dir DIR]
+uv run main.py [canticle] [-c CANTO] [-m MODEL] [-r ROUNDS] [--no-think] [--out-dir DIR]
 ```
 
 | 引数 | 説明 | デフォルト |
@@ -46,12 +46,35 @@ uv run main.py [canticle] [-c CANTO] [-m MODEL] [--out-dir DIR]
 | `canticle` | `inferno`、`purgatorio`、`paradiso` のいずれか | `inferno` |
 | `-c`, `--canto` | 歌の番号 | `1` |
 | `-m`, `--model` | ベンダープレフィックス付きのモデル名（例: `openai:gpt-4.1-mini`） | `ollama:gemma4:26b-a4b-it-qat` |
+| `-r`, `--rounds` | 対訳を補完する最大ラウンド数 | `5` |
+| `--no-think` | thinkingを無効にする（`include_thoughts=False`） | 有効 |
 | `--out-dir` | 出力ディレクトリ | `test` |
 
-記事は `<out-dir>/<canticle>/<NN>.md`（例: `test/inferno/01.md`）に保存されます。
+出力は以下の2つです（例: `test/inferno/01.md`、`test/inferno/01.txt`）。
+
+- `<out-dir>/<canticle>/<NN>.md` — 解説記事
+- `<out-dir>/<canticle>/<NN>.txt` — 対訳。原文と日本語訳を1行ずつ交互に並べたもの
 
 **実行例**
 
 ```bash
 uv run main.py inferno -c 1 -m openai:gpt-6-astra --out-dir astra
 ```
+
+## 対訳の生成
+
+対訳は次の手順で作られます。
+
+1. 解説記事の引用ブロックから `> 行番号 原文` / `> （日本語訳）` の対を抽出する。引用された原文がコーパスの当該行と完全に一致しない場合（部分引用や誤記）は、誤った訳が付かないよう破棄する
+2. 全行を交互形式に並べ、まだ訳のない行にプレースホルダーを置いたテキストをモデルへ渡し、その行だけを訳させる
+3. 返ってきた訳を検査し、通ったものを反映する。埋まらなかった行が残っていれば、2へ戻って繰り返す（最大 `--rounds` 回）
+
+補完された訳は、次のいずれかに該当する場合に採用せず、未訳のまま次のラウンドへ回します。
+
+- プレースホルダーがそのまま残っている
+- 原文と一致している（訳さずに複写している）
+- 日本語文字を含まない
+
+ファイルは各ラウンドの終了時に保存されます。既に `<NN>.txt` があればそこから読み込んで、未訳の行だけを補完するので、中断しても再実行すれば続きから進みます。`<NN>.md` があれば解説記事の生成は行いません。
+
+小さめのローカルモデルでは、thinkingが終わらない、プレースホルダーをそのまま出力する、原文を複写するといった失敗が起こります。実例と対処は [gemma4-26b/README.md](gemma4-26b/README.md) を参照してください。
