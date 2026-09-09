@@ -12,8 +12,14 @@ from llm7shi import Client
 
 DEFAULT_OUT_DIR = Path(__file__).parent / "test"
 
+CANTICLE_NAMES = {
+    "inferno": "地獄篇",
+    "purgatorio": "煉獄篇",
+    "paradiso": "天国篇",
+}
+
 PROMPT = """
-添付のダンテ『神曲』地獄篇第1歌のイタリア語原文を読み、寓意・背景を解説する記事をMarkdownで書いてください。
+添付のダンテ『神曲』{canticle_name}第{number}歌のイタリア語原文を読み、寓意・背景を解説する記事をMarkdownで書いてください。
 
 - 場面・主題ごとに見出しを付け、各見出しの下でその箇所の要点となる範囲を引用してください。
 - 引用は行ごとに `> 行番号 原文` の次の行に `> （日本語訳）` を続ける形式にしてください。
@@ -54,8 +60,10 @@ def main():
     args = parser.parse_args()
 
     text = canto_text(args.canticle, args.canto)
+    canticle_name = CANTICLE_NAMES.get(args.canticle, args.canticle)
+    prompt = PROMPT.format(canticle_name=canticle_name, number=args.canto)
     client = Client(model=args.model, show_params=False, keep_history=False)
-    result = client([text, PROMPT])
+    result = client([text, prompt])
 
     out_path = args.out_dir / args.canticle / f"{args.canto:02d}.md"
     out_path.parent.mkdir(parents=True, exist_ok=True)
