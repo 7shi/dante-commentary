@@ -75,7 +75,7 @@
 38 s'arresta punto, giace poi cent' anni
 ほんの一瞬でも立ち止まれば、その後百年も横たわり、
 39 sanz' arrostarsi quando 'l foco il feggia.
-炎に打たれても、それを払いのけることさえできないのだ。」
+炎に打たれても、それを払いのけることさえできないのだ。
 40 Però va oltre: i' ti verrò a' panni;
 だから先へ進みなさい。私はお前の衣のそばについて行こう。
 41 e poi rigiugnerò la mia masnada,
@@ -95,9 +95,9 @@
 48 e chi è questi che mostra 'l cammino?».
 そして、道を示しているこの方は、どなたなのか。」
 49 «Là sù di sopra, in la vita serena»,
-「あの上の、明るい現世にいたころ」、
+「あの上の、明るい現世にいたころ、
 50 rispuos' io lui, «mi smarri' in una valle,
-私は彼に答えた。「私はある谷で道に迷いました、
+私は彼に答えた。私はある谷で道に迷いました、
 51 avanti che l'età mia fosse piena.
 私の齢が、まだ盛りに達しないうちに。
 52 Pur ier mattina le volsi le spalle:
@@ -155,9 +155,9 @@
 78 fu fatto il nido di malizia tanta».
 これほどの悪意の巣が築かれたときに。」
 79 «Se fosse tutto pieno il mio dimando»,
-「もし私の願いが、すべてかなえられていたなら」、
+「もし私の願いが、すべてかなえられていたなら、
 80 rispuos' io lui, «voi non sareste ancora
-私は彼に答えた。「あなたはまだ、
+私は彼に答えた。あなたはまだ、
 81 de l'umana natura posto in bando;
 人の世から追い出されてはおられなかったでしょう。
 82 ché 'n la mente m'è fitta, e or m'accora,
@@ -235,7 +235,7 @@
 118 Gente vien con la quale esser non deggio.
 私が一緒にいてはならない人々がやって来る。
 119 Sieti raccomandato il mio Tesoro,
-私の『宝典』を、どうかお前に託したい。
+私の宝典を、どうかお前に託したい。
 120 nel qual io vivo ancora, e più non cheggio».
 その中に私は今も生きている。それ以上は求めない。」
 121 Poi si rivolse, e parve di coloro
