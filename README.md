@@ -38,7 +38,7 @@ your-workspace/
 ## 使い方
 
 ```bash
-uv run python main.py [canticle] [-c CANTO] [-m MODEL] [--out-dir DIR]
+uv run main.py [canticle] [-c CANTO] [-m MODEL] [--out-dir DIR]
 ```
 
 | 引数 | 説明 | デフォルト |
@@ -53,5 +53,5 @@ uv run python main.py [canticle] [-c CANTO] [-m MODEL] [--out-dir DIR]
 **実行例**
 
 ```bash
-uv run python main.py inferno -c 1 -m openai:gpt-6-astra --out-dir astra
+uv run main.py inferno -c 1 -m openai:gpt-6-astra --out-dir astra
 ```
