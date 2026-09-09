@@ -147,9 +147,9 @@
 74 figliuol d'Anchise che venne di Troia,
 トロイアからやって来た、アンキセスの息子を、
 75 poi che 'l superbo Ilïón fu combusto.
-誇り高いイリオンが焼け落ちた後に。」
+誇り高いイリオンが焼け落ちた後に。
 76 Ma tu perché ritorni a tanta noia?
-「だが、お前はなぜ、これほどの苦しみへ戻るのか。
+だが、お前はなぜ、これほどの苦しみへ戻るのか。
 77 perché non sali il dilettoso monte
 なぜ、喜びに満ちた山へ登らないのか、
 78 ch'è principio e cagion di tutta gioia?».
@@ -189,7 +189,7 @@
 95 non lascia altrui passar per la sua via,
 誰をも、その道に通しはしない。
 96 ma tanto lo 'mpedisce che l'uccide;
-それどころか、人を阻み抜き、ついには殺してしまう。」
+それどころか、人を阻み抜き、ついには殺してしまう。
 97 e ha natura sì malvagia e ria,
 そして、その性質はあまりに邪悪で、たちが悪く、
 98 che mai non empie la bramosa voglia,
@@ -207,7 +207,7 @@
 104 ma sapïenza, amore e virtute,
 知恵と愛と徳を糧とするだろう。
 105 e sua nazion sarà tra feltro e feltro.
-そして、その生まれは「フェルトとフェルトの間」にあるだろう。
+そして、その生まれはフェルトとフェルトの間にあるだろう。
 106 Di quella umile Italia fia salute
 その者は、あの低きイタリアの救いとなるだろう、
 107 per cui morì la vergine Cammilla,
