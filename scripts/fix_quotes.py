@@ -17,6 +17,18 @@ Segments come from segments/<canticle>.jsonl. A segment can begin or end in
 the middle of a speech - the source's quotes balance within a canto, not
 within every segment - so the prompt says to leave a speech the source does
 not open or close alone.
+
+A segment that already matches the source's structure is skipped without
+calling the model - sending it in would only risk the model introducing a
+mark that breaks the match. --check runs that same structural test on its
+own, without calling the model or writing anything.
+
+A segment whose translation still holds one of the source's own literal
+marks (« » “ ” ‘ ’) usually was never actually translated - the Italian
+leaked through verbatim - rather than suffering a quote-style slip. Such a
+segment is skipped rather than "corrected", since fixing only its quote
+marks would leave the untranslated text in place while erasing the one
+signal that it needs to be redone by hand; --check keeps flagging it.
 """
 
 import argparse
@@ -67,6 +79,11 @@ QUOTE_CHARS = "«»“”‘’「」『』\"'"
 
 QUOTES = str.maketrans({c: None for c in QUOTE_CHARS})
 
+# The source's own literal marks - never legitimate in Japanese text, so a
+# leftover one almost always means the segment was never actually
+# translated (the Italian leaked through verbatim), not a quote-style slip
+FOREIGN_CHARS = "«»“”‘’"
+
 
 def normalize(text: str) -> str:
     """The text with everything the model is allowed to change taken out."""
@@ -75,6 +92,11 @@ def normalize(text: str) -> str:
 
 def has_quotes(text: str) -> bool:
     return any(c in QUOTE_CHARS for c in text)
+
+
+def foreign_marks(lines: List[str]) -> str:
+    """The lines' quote marks still in the source's own literal style."""
+    return "".join(sorted({c for line in lines for c in line if c in FOREIGN_CHARS}))
 
 
 def flatten(spans: Tuple[QuoteSpan, ...]) -> List[QuoteSpan]:
@@ -158,6 +180,10 @@ def check(numbers: List[int], translation_lines: List[str], response: str,
     if got != want:
         problems.append(f"unmatched marks {got} != {want} (closes, opens)")
 
+    # A mark left in the source's own literal style, e.g. a leftover «»
+    if foreign := foreign_marks(texts):
+        problems.append(f"leftover {foreign} not converted to Japanese's quotation marks")
+
     before, after = normalize("\n".join(translation_lines)), normalize("\n".join(texts))
     matcher = difflib.SequenceMatcher(None, before, after, autojunk=False)
     drift = 0.0 if before == after else 1.0 - matcher.ratio()
@@ -213,8 +239,8 @@ def main() -> int:
     )
     parser.add_argument("files", nargs="+",
                         help="Interleaved translation files to fix in place (e.g. astra/inferno/01.txt)")
-    parser.add_argument("-m", "--model", required=True,
-                        help="LLM model to use (e.g. openai:gpt-6-astra)")
+    parser.add_argument("-m", "--model",
+                        help="LLM model to use (e.g. openai:gpt-6-astra). Required unless --check")
     parser.add_argument("-c", "--canticle", choices=CANTICLES,
                         help="Canticle of the files (default: the name of their parent directory)")
     parser.add_argument("-s", "--segment", type=parse_segment_arg,
@@ -222,11 +248,18 @@ def main() -> int:
                              "(e.g. 3 or 1,3). Without it, every segment is processed")
     parser.add_argument("-n", "--dry-run", action="store_true",
                         help="Report the changes without writing them back")
+    parser.add_argument("--check", action="store_true",
+                        help="Report which segments' quotation marks already mismatch what "
+                             "the source's structure calls for, without calling the model or "
+                             "writing anything - use it to locate a problem left over from a "
+                             "previous run whose output has scrolled away")
 
     args = parser.parse_args()
+    if not args.check and not args.model:
+        parser.error("-m/--model is required unless --check is given")
 
     # Segments are independent, so no turn is carried over into the next
-    client = Client(model=args.model, show_params=False, keep_history=False)
+    client = None if args.check else Client(model=args.model, show_params=False, keep_history=False)
 
     violations: List[Tuple[str, List[str], float]] = []
     changed = processed = 0
@@ -261,6 +294,40 @@ def main() -> int:
             if not has_quotes("".join(source_lines[part] + translations[part])):
                 continue
             label = f"{canticle} {canto:2d}:{segment}"
+            want = crossing(spans, b["start_line"], b["end_line"])
+
+            # Same structural checks fix_segment's response is held to below,
+            # run directly on the translation as it stands on disk
+            got = unmatched(translations[part])
+            foreign = foreign_marks(translations[part])
+            already_ok = got == want and not foreign
+
+            if args.check:
+                if not already_ok:
+                    problems = []
+                    if got != want:
+                        problems.append(f"unmatched marks {got} != {want} (closes, opens)")
+                    if foreign:
+                        problems.append(f"leftover {foreign} not converted to Japanese's quotation marks")
+                    violations.append((label, problems, 0.0))
+                    print(f"{label} (lines {b['start_line']}-{b['end_line']}): {', '.join(problems)}")
+                continue
+
+            # Already matches the source's structure - sending it to the model
+            # would only risk it introducing a mark that breaks that match
+            if already_ok:
+                continue
+
+            # A leftover literal source mark usually means the segment was
+            # never actually translated, not a quote-style slip - skip it
+            # entirely rather than have fix_segment "correct" the quotes on
+            # text that is still Italian. --check keeps flagging it until it
+            # is redone by hand
+            if foreign:
+                print(f"{label} (lines {b['start_line']}-{b['end_line']}): leftover {foreign} - "
+                      f"likely untranslated, skipping")
+                continue
+
             print(f"\n{label} -> fixing quotation marks "
                   f"(lines {b['start_line']}-{b['end_line']})")
 
@@ -268,8 +335,7 @@ def main() -> int:
                 client, numbers[part], source_lines[part], translations[part],
             )
 
-            problems, drift = check(numbers[part], translations[part], response,
-                                    crossing(spans, b["start_line"], b["end_line"]))
+            problems, drift = check(numbers[part], translations[part], response, want)
             if problems:
                 violations.append((label, problems, drift))
                 print(f"  violation: {', '.join(problems)}")
@@ -285,11 +351,14 @@ def main() -> int:
             if not args.dry_run:
                 save_interleaved(path, numbers, source_lines, translations)
 
-    print(f"\nProcessed {processed} segments, {changed} lines changed"
-          + (" (dry run, nothing written)" if args.dry_run else ""))
-    print(f"Violations: {len(violations)}/{processed + len(violations)}")
-    for label, problems, drift in violations:
-        print(f"  {label} {', '.join(problems)} (drift {drift * 100:.1f}%)")
+    if args.check:
+        print(f"\n{len(violations)} segment(s) already mismatch the source's structure")
+    else:
+        print(f"\nProcessed {processed} segments, {changed} lines changed"
+              + (" (dry run, nothing written)" if args.dry_run else ""))
+        print(f"Violations: {len(violations)}/{processed + len(violations)}")
+        for label, problems, drift in violations:
+            print(f"  {label} {', '.join(problems)} (drift {drift * 100:.1f}%)")
 
     return 0
 
