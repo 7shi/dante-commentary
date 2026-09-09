@@ -1,20 +1,18 @@
 # dante-commentary
 
-Generates a Japanese commentary article (Markdown) for a canto of Dante's
-*Divina Commedia*, explaining its allegory and background with spot quotations
-from the Italian source. The source text is fetched via
-[dante_corpus](https://github.com/7shi/dante-corpus) and sent to an LLM
-through [llm7shi](https://github.com/7shi/llm7shi).
+ダンテ『神曲』の各歌について、寓意や背景を解説し、イタリア語原文からの引用を交えた日本語の解説記事（Markdown）を生成します。原典テキストは
+[dante_corpus](https://github.com/7shi/dante-corpus) 経由で取得し、
+[llm7shi](https://github.com/7shi/llm7shi) を通じてLLMに送信します。
 
-## Dependency Projects
+## 依存プロジェクト
 
-This project depends on the following companion repository:
+このプロジェクトは以下の姉妹リポジトリに依存しています：
 
-- [dante-corpus](https://github.com/7shi/dante-corpus) - The shared corpus library and thin CLI. Serves the normalized Italian source text, tokens, and the quote-span tree as a queryable "DB" through its `dante_corpus` API. **Required** — this project reads canto text from it via an editable path dependency.
+- [dante-corpus](https://github.com/7shi/dante-corpus) - 共通のコーパスライブラリと薄いCLI。正規化されたイタリア語原文、トークン、引用範囲ツリーを `dante_corpus` API を通じて問い合わせ可能な「DB」として提供します。**必須** — 本プロジェクトはeditable path dependencyとして各歌のテキストをここから読み込みます。
 
-### Preparation
+### 準備
 
-Because `dante-commentary` consumes `dante-corpus` via an editable path dependency (`../dante-corpus`), both repositories must share one parent directory. Ensure you have `uv` installed, then clone both into the same directory:
+`dante-commentary` は `dante-corpus` をeditable path dependency（`../dante-corpus`）として利用するため、両方のリポジトリを同じ親ディレクトリに置く必要があります。`uv` がインストールされていることを確認した上で、両方を同じディレクトリにクローンしてください：
 
 ```bash
 git clone https://github.com/7shi/dante-corpus.git
@@ -24,35 +22,35 @@ cd dante-commentary
 uv sync
 ```
 
-The resulting layout:
+結果として以下のような構成になります：
 
 ```
 your-workspace/
-├── dante-corpus/       # source text, tokens (read via the dante_corpus API)
-└── dante-commentary/   # this repo
+├── dante-corpus/       # 原文テキスト、トークン（dante_corpus API経由で読み込み）
+└── dante-commentary/   # このリポジトリ
 ```
 
-## Files
+## ファイル構成
 
-- `main.py` — generates the article
-- `fable/` — sample output
+- `main.py` — 記事を生成する
+- `fable/` — サンプル出力
 
-## Usage
+## 使い方
 
 ```bash
 uv run python main.py [canticle] [-c CANTO] [-m MODEL] [--out-dir DIR]
 ```
 
-| Argument | Description | Default |
+| 引数 | 説明 | デフォルト |
 |---|---|---|
-| `canticle` | `inferno`, `purgatorio`, or `paradiso` | `inferno` |
-| `-c`, `--canto` | Canto number | `1` |
-| `-m`, `--model` | Model name with optional vendor prefix (e.g. `openai:gpt-4.1-mini`) | `ollama:gemma4:26b-a4b-it-qat` |
-| `--out-dir` | Output directory | `test` |
+| `canticle` | `inferno`、`purgatorio`、`paradiso` のいずれか | `inferno` |
+| `-c`, `--canto` | 歌の番号 | `1` |
+| `-m`, `--model` | ベンダープレフィックス付きのモデル名（例: `openai:gpt-4.1-mini`） | `ollama:gemma4:26b-a4b-it-qat` |
+| `--out-dir` | 出力ディレクトリ | `test` |
 
-The article is saved to `<out-dir>/<canticle>/<NN>.md` (e.g. `test/inferno/01.md`).
+記事は `<out-dir>/<canticle>/<NN>.md`（例: `test/inferno/01.md`）に保存されます。
 
-**Examples**
+**実行例**
 
 ```bash
 uv run python main.py inferno -c 1 -m openai:gpt-6-astra --out-dir astra
