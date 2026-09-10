@@ -84,11 +84,10 @@ def extract_translations(commentary: str, lines) -> dict[int, str]:
     return translations
 
 
-def interleaved_text(lines, translations: dict[int, str], placeholder: str = "") -> str:
-    """Original and translation on alternating lines.
+def interleaved_text(lines, translations: dict[int, str], placeholder: str) -> str:
+    """Original and translation on alternating lines, sent to the model.
 
-    Untranslated lines are blank in the saved file, but carry a placeholder when
-    the text is sent to the model, which overlooks blank lines easily.
+    Untranslated lines carry a placeholder, since the model overlooks blank lines easily.
     """
     return "\n".join(
         f"{line.no} {line.text}\n{translations.get(line.no, placeholder)}"
@@ -96,18 +95,18 @@ def interleaved_text(lines, translations: dict[int, str], placeholder: str = "")
     )
 
 
-def parse_interleaved(interleaved: str, lines) -> dict[int, str]:
-    """Read back a saved interleaved file, keeping the lines already translated."""
-    originals = {line.no: line.text for line in lines}
-    text_lines = interleaved.splitlines()
+def translations_only_text(lines, translations: dict[int, str]) -> str:
+    """Japanese translations only, one per source line, blank where untranslated."""
+    return "\n".join(translations.get(line.no, "") for line in lines)
+
+
+def parse_translations_only(saved: str, lines) -> dict[int, str]:
+    """Read back a saved translations-only file, keeping the lines already translated."""
     translations: dict[int, str] = {}
-    for i, text_line in enumerate(text_lines[:-1]):
-        if not (match := FILLED_RE.match(text_line)):
-            continue
-        no = int(match.group(1))
-        trans = clean_translation(text_lines[i + 1])
-        if originals.get(no) == match.group(2) and is_translated(trans, match.group(2)):
-            translations[no] = trans
+    for line, text_line in zip(lines, saved.splitlines()):
+        trans = clean_translation(text_line)
+        if is_translated(trans, line.text):
+            translations[line.no] = trans
     return translations
 
 
@@ -178,7 +177,7 @@ def main():
     if trans_path.exists():
         # Resume: the saved file already holds every translation extracted so far.
         print(f"Resuming from {trans_path}")
-        translations = parse_interleaved(trans_path.read_text(), lines)
+        translations = parse_translations_only(trans_path.read_text(), lines)
     else:
         if out_path.exists():
             print(f"Skipped (already exists): {out_path}")
@@ -196,7 +195,7 @@ def main():
     def save():
         # Saved every round, so an interrupted run can resume where it left off.
         nonlocal saved
-        content = interleaved_text(lines, translations) + "\n"
+        content = translations_only_text(lines, translations) + "\n"
         if content != saved:
             out_dir.mkdir(parents=True, exist_ok=True)
             trans_path.write_text(content)
