@@ -11,7 +11,9 @@ boundary that the source draws inside a line.
 This script does not re-translate: it hands the model one segment of the source
 alongside its existing translation and asks for the same translation back with
 its quotation marks corrected. The record is rewritten in place in the given
-interleaved translation file (e.g. astra/inferno/01.txt).
+translation file (e.g. astra/inferno/01.txt), which holds one Japanese line per
+source line, blank where untranslated, with no line numbers of its own - those
+come from the source via dante_corpus.
 
 Segments come from segments/<canticle>.jsonl. A segment can begin or end in
 the middle of a speech - the source's quotes balance within a canto, not
@@ -200,19 +202,15 @@ def load_segments(canticle: str) -> Dict[int, List[Dict]]:
     return {r["canto"]: r["boundaries"] for r in records}
 
 
-def load_interleaved(path: str) -> Tuple[List[int], List[str]]:
-    """The line numbers and translations of an interleaved translation file."""
+def load_translations(path: str) -> List[str]:
+    """One Japanese line per source line, blank where untranslated."""
     with open(path, "r", encoding="utf-8") as f:
-        lines = [line.rstrip("\n") for line in f if line.strip()]
-    numbers, texts = parse_numbered("\n".join(lines[::2]))
-    return numbers, lines[1::2]
+        return f.read().splitlines()
 
 
-def save_interleaved(path: str, numbers: List[int], source_lines: List[str],
-                     translation_lines: List[str]) -> None:
+def save_translations(path: str, translation_lines: List[str]) -> None:
     with open(path, "w", encoding="utf-8") as f:
-        for no, source, translation in zip(numbers, source_lines, translation_lines):
-            f.write(f"{no} {source}\n{translation}\n")
+        f.write("\n".join(translation_lines) + "\n")
 
 
 def parse_path(path: str, canticle: str) -> Tuple[str, int]:
@@ -238,7 +236,7 @@ def main() -> int:
         description="Restore the quotation marks of an existing translation"
     )
     parser.add_argument("files", nargs="+",
-                        help="Interleaved translation files to fix in place (e.g. astra/inferno/01.txt)")
+                        help="Translation files to fix in place (e.g. astra/inferno/01.txt)")
     parser.add_argument("-m", "--model",
                         help="LLM model to use (e.g. openai:gpt-6-astra). Required unless --check")
     parser.add_argument("-c", "--canticle", choices=CANTICLES,
@@ -270,14 +268,15 @@ def main() -> int:
             boundaries = load_segments(canticle)[canto]
             source = {line.no: line.text for line in ref(f"{canticle} {canto}")}
             spans = flatten(get_canto(canticle, canto).quotes())
-            numbers, translations = load_interleaved(path)
+            translations = load_translations(path)
         except (OSError, ValueError, KeyError) as e:
             print(f"{path}: {e}", file=sys.stderr)
             return 1
 
-        if numbers != sorted(source):
-            print(f"{path}: line numbers do not match {canticle} {canto} "
-                  f"({len(numbers)} lines, source has {len(source)})", file=sys.stderr)
+        numbers = sorted(source)
+        if len(translations) != len(numbers):
+            print(f"{path}: line count does not match {canticle} {canto} "
+                  f"({len(translations)} lines, source has {len(numbers)})", file=sys.stderr)
             return 1
 
         source_lines = [source[no] for no in numbers]
@@ -349,7 +348,7 @@ def main() -> int:
             processed += 1
 
             if not args.dry_run:
-                save_interleaved(path, numbers, source_lines, translations)
+                save_translations(path, translations)
 
     if args.check:
         print(f"\n{len(violations)} segment(s) already mismatch the source's structure")
