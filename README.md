@@ -35,6 +35,7 @@ your-workspace/
 
 - `scripts/generate.py` — 記事と対訳を生成する
 - `scripts/fix_quotes.py` — 対訳の鍵括弧を原文に合わせて直す（後処理）
+- `scripts/normalize_quotes.py` — 解説記事の引用ブロックを正規の形式に整形する（後処理）
 - `segments/` — 各歌を場面ごとに分割した境界データ（`inferno.jsonl`、`purgatorio.jsonl`、`paradiso.jsonl`）
 - `fable/`、`astra/`、`gemma4-26b/` — モデルごとのサンプル出力
 
@@ -140,3 +141,31 @@ uv run scripts/fix_quotes.py astra/inferno/*.txt --check
 1. `dante_corpus.canto(canticle, canto).quotes()` で原文の台詞範囲（`start_line`〜`end_line`）を確認する（入れ子は `children` を再帰的に辿る）。前後の原文を直接読んでもかまいません
 2. その範囲と食い違っている箇所を特定し、対訳ファイルに鍵括弧を1つ足す／消すだけで合わせる（文言や句読点は変更しない）
 3. `--check` で解消したことを確認する（モデルを呼ばないので無料）
+
+## 引用ブロックの整形
+
+モデルが出力する解説記事には、引用ブロックの形式に揺れがあります。原文行末の強制改行（行末の空白2つ）の欠落、訳文行末への余計な空白、対と対の間の空行の欠落や重複などです。`scripts/normalize_quotes.py` は、`>` で始まる行を機械的に判定して（数字始まりなら原文、`（`／`(` 始まりなら訳文）、次の形式に統一します。
+
+```
+> 1 Nel mezzo del cammin di nostra vita  
+> （私たちの人生の道の半ばで、）
+>
+> 2 mi ritrovai per una selva oscura,  
+> （私は、ある暗い森の中にいる自分に気づいた。）
+```
+
+- 原文行は行末に空白2つを付ける。行番号の後の区切り（`.`、`)` など）は空白に置き換わる
+- 訳文行は括弧を全角 `（）` に統一し、行末の空白を除く。閉じ括弧の後ろに付いた余計な `」`『』は `generate.py` の抽出と同様にノイズとして除去する
+- 対と対の間には `>` のみの行を1行入れる。空行だけで対が終わっている（次が散文）場合は触れない
+- 原文の次の行に訳文が無い場合と、訳文の前に原文が無い場合は警告してそのまま残す
+
+ディレクトリを渡すと、その下の `<canticle>/<NN>.md`（`inferno`、`purgatorio`、`paradiso`）をすべてその場で書き換えます。モデルを呼ばないのでいつでも実行でき、何度実行しても結果は変わりません。
+
+```bash
+uv run scripts/normalize_quotes.py astra gemma4-26b fable
+```
+
+| 引数 | 説明 | デフォルト |
+|---|---|---|
+| `dirs` | `<canticle>/<NN>.md` を含むディレクトリ。複数指定可 | 必須 |
+| `-n`, `--dry-run` | 書き込まずに変更されるファイルだけ報告する | 書き込む |
