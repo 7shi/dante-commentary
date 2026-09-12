@@ -3,7 +3,7 @@
 `openai:gpt-6-astra` による出力。
 
 ```
-uv run main.py inferno -c 1 -m openai:gpt-6-astra --out-dir astra
+uv run scripts/generate.py inferno -c 1 -m openai:gpt-6-astra -d astra
 ```
 
 - `01.md` … 解説記事（commentary）

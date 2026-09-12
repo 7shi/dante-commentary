@@ -78,8 +78,10 @@ def normalize_file(path: Path, dry_run: bool) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("dirs", nargs="+", type=Path,
-                        help="Directories holding <canticle>/<NN>.md files (e.g. astra)")
+    parser.add_argument("-d", "--dir", dest="dirs", action="append", type=Path,
+                        required=True, metavar="DIR",
+                        help="Directory holding <canticle>/<NN>.md files (e.g. astra); "
+                             "repeatable, e.g. -d astra -d fable")
     parser.add_argument("-n", "--dry-run", action="store_true",
                         help="Report the changes without writing them back")
     args = parser.parse_args()

@@ -3,7 +3,7 @@
 `ollama:gemma4:26b-a4b-it-qat` による出力。
 
 ```
-uv run main.py inferno -c 1 --out-dir gemma4-26b --no-think
+uv run scripts/generate.py inferno -c 1 -d gemma4-26b --no-think
 ```
 
 - `01.md` … 解説記事（commentary）

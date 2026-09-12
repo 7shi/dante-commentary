@@ -42,7 +42,7 @@ your-workspace/
 ## 使い方
 
 ```bash
-uv run scripts/generate.py [canticle] [-c CANTO] [-m MODEL] [-r ROUNDS] [--no-think] [--out-dir DIR]
+uv run scripts/generate.py [canticle] -d DIR [-c CANTO] [-m MODEL] [-r ROUNDS] [--no-think]
 ```
 
 | 引数 | 説明 | デフォルト |
@@ -52,17 +52,17 @@ uv run scripts/generate.py [canticle] [-c CANTO] [-m MODEL] [-r ROUNDS] [--no-th
 | `-m`, `--model` | ベンダープレフィックス付きのモデル名（例: `openai:gpt-4.1-mini`） | `ollama:gemma4:26b-a4b-it-qat` |
 | `-r`, `--rounds` | 対訳を補完する最大ラウンド数 | `5` |
 | `--no-think` | thinkingを無効にする（`include_thoughts=False`） | 有効 |
-| `--out-dir` | 出力ディレクトリ | `test` |
+| `-d`, `--dir` | 出力ディレクトリ。`<canticle>/<NN>.md` を書き出す | 必須 |
 
 出力は以下の2つです（例: `test/inferno/01.md`、`test/inferno/01.txt`）。
 
-- `<out-dir>/<canticle>/<NN>.md` — 解説記事
-- `<out-dir>/<canticle>/<NN>.txt` — 対訳。原文と日本語訳を1行ずつ交互に並べたもの
+- `<dir>/<canticle>/<NN>.md` — 解説記事
+- `<dir>/<canticle>/<NN>.txt` — 対訳。原文と日本語訳を1行ずつ交互に並べたもの
 
 **実行例**
 
 ```bash
-uv run scripts/generate.py inferno -c 1 -m openai:gpt-6-astra --out-dir astra
+uv run scripts/generate.py inferno -c 1 -m openai:gpt-6-astra -d astra
 ```
 
 ## 対訳の生成
@@ -107,14 +107,15 @@ jq -c '{canto: .chapter, total_lines: .response.total_lines, boundaries}' \
 `scripts/fix_quotes.py` は、これをセグメント単位で直します。訳し直しはせず、原文と既存の訳をモデルに渡して、**鍵括弧だけを直した同じ訳**を返させます。
 
 ```bash
-uv run scripts/fix_quotes.py astra/inferno/01.txt -m openai:gpt-5.6-terra
+uv run scripts/fix_quotes.py -d astra inferno -c 1 -m openai:gpt-5.6-terra
 ```
 
 | 引数 | 説明 | デフォルト |
 |---|---|---|
-| `files` | 対訳ファイル（`<NN>.txt`）。複数指定可。その場で書き換える | 必須 |
+| `canticle` | 処理する篇（`inferno`、`purgatorio`、`paradiso`）。複数指定可 | 必須 |
+| `-d`, `--dir` | `<canticle>/<NN>.txt` を含むディレクトリ | 必須 |
 | `-m`, `--model` | ベンダープレフィックス付きのモデル名 | 必須 |
-| `-c`, `--canticle` | 篇。歌番号はファイル名から取る | 親ディレクトリ名 |
+| `-c`, `--canto` | 歌の番号 | ディレクトリ下の全歌 |
 | `-s`, `--segment` | 処理するセグメント番号（`3`、`1,3`） | 全セグメント |
 | `-n`, `--dry-run` | 書き戻さない（API呼び出しは行う） | 書き戻す |
 | `--check` | モデルを呼ばず、原文の構造と現在の鍵括弧が一致しないセグメントを報告するだけ | - |
@@ -133,7 +134,7 @@ uv run scripts/fix_quotes.py astra/inferno/01.txt -m openai:gpt-5.6-terra
 `--check` は、この判定（原文の構造との突き合わせ）だけをモデルを呼ばずに行い、一致しないセグメントを一覧します。実行のたびに料金がかかる本処理の前に、直すべき箇所を確認したり、以前の実行結果がスクロールで流れてしまったときに再確認したりするのに使います。
 
 ```bash
-uv run scripts/fix_quotes.py astra/inferno/*.txt --check
+uv run scripts/fix_quotes.py -d astra inferno --check
 ```
 
 何度実行しても同じセグメントが直らないことがあります。多くは、セグメントの区切りがちょうど文として完結して見える位置に来ていて、原文では台詞が続いているにもかかわらず、モデルがそこで閉じてしまうケースです。再試行では直らないので、`.txt` ファイルを手で直します。
@@ -159,13 +160,13 @@ uv run scripts/fix_quotes.py astra/inferno/*.txt --check
 - 対と対の間には `>` のみの行を1行入れる。空行だけで対が終わっている（次が散文）場合は触れない
 - 原文の次の行に訳文が無い場合と、訳文の前に原文が無い場合は警告してそのまま残す
 
-ディレクトリを渡すと、その下の `<canticle>/<NN>.md`（`inferno`、`purgatorio`、`paradiso`）をすべてその場で書き換えます。モデルを呼ばないのでいつでも実行でき、何度実行しても結果は変わりません。
+`-d` でディレクトリを渡すと、その下の `<canticle>/<NN>.md`（`inferno`、`purgatorio`、`paradiso`）をすべてその場で書き換えます。モデルを呼ばないのでいつでも実行でき、何度実行しても結果は変わりません。
 
 ```bash
-uv run scripts/normalize_quotes.py astra gemma4-26b fable
+uv run scripts/normalize_quotes.py -d astra -d gemma4-26b -d fable
 ```
 
 | 引数 | 説明 | デフォルト |
 |---|---|---|
-| `dirs` | `<canticle>/<NN>.md` を含むディレクトリ。複数指定可 | 必須 |
+| `-d`, `--dir` | `<canticle>/<NN>.md` を含むディレクトリ。`-d dir -d dir` のように複数指定可 | 必須 |
 | `-n`, `--dry-run` | 書き込まずに変更されるファイルだけ報告する | 書き込む |

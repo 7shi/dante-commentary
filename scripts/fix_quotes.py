@@ -10,10 +10,11 @@ boundary that the source draws inside a line.
 
 This script does not re-translate: it hands the model one segment of the source
 alongside its existing translation and asks for the same translation back with
-its quotation marks corrected. The record is rewritten in place in the given
-translation file (e.g. astra/inferno/01.txt), which holds one Japanese line per
-source line, blank where untranslated, with no line numbers of its own - those
-come from the source via dante_corpus.
+its quotation marks corrected. The record is rewritten in place in the
+translation file chosen by -d/--dir and the canticle/canto arguments (e.g.
+astra/inferno/01.txt), which holds one Japanese line per source line, blank
+where untranslated, with no line numbers of its own - those come from the
+source via dante_corpus.
 
 Segments come from segments/<canticle>.jsonl. A segment can begin or end in
 the middle of a speech - the source's quotes balance within a canto, not
@@ -39,6 +40,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 from dante_corpus import QuoteSpan, canto as get_canto, ref
@@ -213,15 +215,6 @@ def save_translations(path: str, translation_lines: List[str]) -> None:
         f.write("\n".join(translation_lines) + "\n")
 
 
-def parse_path(path: str, canticle: str) -> Tuple[str, int]:
-    canticle = canticle or os.path.basename(os.path.dirname(os.path.abspath(path)))
-    if canticle not in CANTICLES:
-        raise ValueError("cannot tell which canticle this file belongs to; pass -c")
-    if not (m := re.match(r"(\d+)", os.path.basename(path))):
-        raise ValueError("cannot tell which canto this file is")
-    return canticle, int(m.group(1))
-
-
 def parse_segment_arg(value: str) -> List[int]:
     try:
         return [int(item) for item in value.split(",")]
@@ -235,12 +228,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Restore the quotation marks of an existing translation"
     )
-    parser.add_argument("files", nargs="+",
-                        help="Translation files to fix in place (e.g. astra/inferno/01.txt)")
+    parser.add_argument("canticles", nargs="+", choices=CANTICLES, metavar="canticle",
+                        help="Canticle(s) to process: inferno, purgatorio, or paradiso")
+    parser.add_argument("-d", "--dir", type=Path, required=True,
+                        help="Directory holding <canticle>/<NN>.txt files (e.g. astra)")
     parser.add_argument("-m", "--model",
                         help="LLM model to use (e.g. openai:gpt-6-astra). Required unless --check")
-    parser.add_argument("-c", "--canticle", choices=CANTICLES,
-                        help="Canticle of the files (default: the name of their parent directory)")
+    parser.add_argument("-c", "--canto", type=int,
+                        help="Canto number to process (default: every canto under the directory)")
     parser.add_argument("-s", "--segment", type=parse_segment_arg,
                         help="Process only these segments of each canto, comma separated "
                              "(e.g. 3 or 1,3). Without it, every segment is processed")
@@ -259,12 +254,19 @@ def main() -> int:
     # Segments are independent, so no turn is carried over into the next
     client = None if args.check else Client(model=args.model, show_params=False, keep_history=False)
 
+    targets: List[Tuple[str, int, Path]] = []
+    for canticle in args.canticles:
+        pattern = f"{args.canto:02d}.txt" if args.canto is not None else "*.txt"
+        for path in sorted((args.dir / canticle).glob(pattern)):
+            targets.append((canticle, int(path.stem), path))
+    if not targets:
+        parser.error("no <canticle>/<NN>.txt files found under the given directories")
+
     violations: List[Tuple[str, List[str], float]] = []
     changed = processed = 0
 
-    for path in args.files:
+    for canticle, canto, path in targets:
         try:
-            canticle, canto = parse_path(path, args.canticle)
             boundaries = load_segments(canticle)[canto]
             source = {line.no: line.text for line in ref(f"{canticle} {canto}")}
             spans = flatten(get_canto(canticle, canto).quotes())

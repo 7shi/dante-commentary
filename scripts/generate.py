@@ -149,10 +149,10 @@ def main():
         help="Disable thinking output (include_thoughts=False)",
     )
     parser.add_argument(
-        "--out-dir",
+        "-d", "--dir",
         type=Path,
         required=True,
-        help="Output directory for 01.md",
+        help="Output directory holding <canticle>/<NN>.md",
     )
     args = parser.parse_args()
 
@@ -160,7 +160,7 @@ def main():
     text = canto_text(lines)
     canticle_name = CANTICLE_NAMES.get(args.canticle, args.canticle)
 
-    out_dir = args.out_dir / args.canticle
+    out_dir = args.dir / args.canticle
     out_path = out_dir / f"{args.canto:02d}.md"
     trans_path = out_dir / f"{args.canto:02d}.txt"
     client = Client(
