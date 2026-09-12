@@ -1,5 +1,5 @@
 """
-Explain a canto of the Divina Commedia in Japanese (default: Inferno Canto 1).
+Explain a canto of the Divina Commedia in Japanese.
 The Italian source (fetched line-by-line from dante_corpus, with line numbers
 so the model can cite them) is sent as its own message, followed by the
 instructions in PROMPT.
@@ -11,8 +11,6 @@ import sys
 from pathlib import Path
 from dante_corpus import ref
 from llm7shi import Client
-
-DEFAULT_OUT_DIR = Path(__file__).parent.parent / "test"
 
 CANTICLE_NAMES = {
     "inferno": "地獄篇",
@@ -126,9 +124,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "canticle",
-        nargs="?",
-        default="inferno",
-        help="Canticle name: inferno, purgatorio, or paradiso (default: inferno)",
+        help="Canticle name: inferno, purgatorio, or paradiso",
     )
     parser.add_argument(
         "-c", "--canto",
@@ -155,8 +151,8 @@ def main():
     parser.add_argument(
         "--out-dir",
         type=Path,
-        default=DEFAULT_OUT_DIR,
-        help=f"Output directory for 01.md (default: {DEFAULT_OUT_DIR})",
+        required=True,
+        help="Output directory for 01.md",
     )
     args = parser.parse_args()
 
