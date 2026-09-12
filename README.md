@@ -34,8 +34,8 @@ your-workspace/
 ## ファイル構成
 
 - `scripts/generate.py` — 記事と対訳を生成する
-- `scripts/fix_quotes.py` — 対訳の鍵括弧を原文に合わせて直す（後処理）
-- `scripts/normalize_quotes.py` — 解説記事の引用ブロックを正規の形式に整形する（後処理）
+- `scripts/fix_txt.py` — 対訳の鍵括弧を原文に合わせて直す（後処理）
+- `scripts/normalize_md.py` — 解説記事の引用ブロックを正規の形式に整形する（後処理）
 - `segments/` — 各歌を場面ごとに分割した境界データ（`inferno.jsonl`、`purgatorio.jsonl`、`paradiso.jsonl`）
 - `fable/`、`astra/`、`gemma4-26b/` — モデルごとのサンプル出力
 
@@ -104,10 +104,10 @@ jq -c '{canto: .chapter, total_lines: .response.total_lines, boundaries}' \
 
 1行単位で訳すと、台詞が行を跨いだときに開始と終了が保持されません。地獄篇1歌の astra 出力では、67〜78行が一続きの発言でありながら75行で一度閉じて76行で開き直し、93行で開いた発言は96行末で閉じられています（原文では129行まで続きます）。
 
-`scripts/fix_quotes.py` は、これをセグメント単位で直します。訳し直しはせず、原文と既存の訳をモデルに渡して、**鍵括弧だけを直した同じ訳**を返させます。
+`scripts/fix_txt.py` は、これをセグメント単位で直します。訳し直しはせず、原文と既存の訳をモデルに渡して、**鍵括弧だけを直した同じ訳**を返させます。
 
 ```bash
-uv run scripts/fix_quotes.py -d astra inferno -c 1 -m openai:gpt-5.6-terra
+uv run scripts/fix_txt.py -d astra inferno -c 1 -m openai:gpt-5.6-terra
 ```
 
 | 引数 | 説明 | デフォルト |
@@ -134,7 +134,7 @@ uv run scripts/fix_quotes.py -d astra inferno -c 1 -m openai:gpt-5.6-terra
 `--check` は、この判定（原文の構造との突き合わせ）だけをモデルを呼ばずに行い、一致しないセグメントを一覧します。実行のたびに料金がかかる本処理の前に、直すべき箇所を確認したり、以前の実行結果がスクロールで流れてしまったときに再確認したりするのに使います。
 
 ```bash
-uv run scripts/fix_quotes.py -d astra inferno --check
+uv run scripts/fix_txt.py -d astra inferno --check
 ```
 
 何度実行しても同じセグメントが直らないことがあります。多くは、セグメントの区切りがちょうど文として完結して見える位置に来ていて、原文では台詞が続いているにもかかわらず、モデルがそこで閉じてしまうケースです。再試行では直らないので、`.txt` ファイルを手で直します。
@@ -145,7 +145,7 @@ uv run scripts/fix_quotes.py -d astra inferno --check
 
 ## 引用ブロックの整形
 
-モデルが出力する解説記事には、引用ブロックの形式に揺れがあります。原文行末の強制改行（行末の空白2つ）の欠落、訳文行末への余計な空白、対と対の間の空行の欠落や重複などです。`scripts/normalize_quotes.py` は、`>` で始まる行を機械的に判定して（数字始まりなら原文、`（`／`(` 始まりなら訳文）、次の形式に統一します。
+モデルが出力する解説記事には、引用ブロックの形式に揺れがあります。原文行末の強制改行（行末の空白2つ）の欠落、訳文行末への余計な空白、対と対の間の空行の欠落や重複などです。`scripts/normalize_md.py` は、`>` で始まる行を機械的に判定して（数字始まりなら原文、`（`／`(` 始まりなら訳文）、次の形式に統一します。
 
 ```
 > 1 Nel mezzo del cammin di nostra vita  
@@ -163,7 +163,7 @@ uv run scripts/fix_quotes.py -d astra inferno --check
 `-d` でディレクトリを渡すと、その下の `<canticle>/<NN>.md`（`inferno`、`purgatorio`、`paradiso`）をすべてその場で書き換えます。モデルを呼ばないのでいつでも実行でき、何度実行しても結果は変わりません。
 
 ```bash
-uv run scripts/normalize_quotes.py -d astra -d gemma4-26b -d fable
+uv run scripts/normalize_md.py -d astra -d gemma4-26b -d fable
 ```
 
 | 引数 | 説明 | デフォルト |
