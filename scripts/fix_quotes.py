@@ -44,6 +44,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from dante_corpus import QuoteSpan, canto as get_canto, ref
+from dante_corpus.api import CANTO_SPEC_HELP, check_canto_spec, select_cantos
 from llm7shi import Client
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -234,8 +235,7 @@ def main() -> int:
                         help="Directory holding <canticle>/<NN>.txt files (e.g. astra)")
     parser.add_argument("-m", "--model",
                         help="LLM model to use (e.g. openai:gpt-6-astra). Required unless --check")
-    parser.add_argument("-c", "--canto", type=int,
-                        help="Canto number to process (default: every canto under the directory)")
+    parser.add_argument("-c", "--canto", metavar="SPEC", help=CANTO_SPEC_HELP)
     parser.add_argument("-s", "--segment", type=parse_segment_arg,
                         help="Process only these segments of each canto, comma separated "
                              "(e.g. 3 or 1,3). Without it, every segment is processed")
@@ -250,15 +250,18 @@ def main() -> int:
     args = parser.parse_args()
     if not args.check and not args.model:
         parser.error("-m/--model is required unless --check is given")
+    if err := check_canto_spec(args.canticles, args.canto):
+        parser.error(err)
 
     # Segments are independent, so no turn is carried over into the next
     client = None if args.check else Client(model=args.model, show_params=False, keep_history=False)
 
     targets: List[Tuple[str, int, Path]] = []
     for canticle in args.canticles:
-        pattern = f"{args.canto:02d}.txt" if args.canto is not None else "*.txt"
-        for path in sorted((args.dir / canticle).glob(pattern)):
-            targets.append((canticle, int(path.stem), path))
+        for canto in select_cantos(canticle, args.canto):
+            path = args.dir / canticle / f"{canto:02d}.txt"
+            if path.exists():
+                targets.append((canticle, canto, path))
     if not targets:
         parser.error("no <canticle>/<NN>.txt files found under the given directories")
 

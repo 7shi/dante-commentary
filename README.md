@@ -42,13 +42,13 @@ your-workspace/
 ## 使い方
 
 ```bash
-uv run scripts/generate.py [canticle] -d DIR [-c CANTO] [-m MODEL] [-r ROUNDS] [--no-think]
+uv run scripts/generate.py [canticle] -d DIR [-c SPEC] [-m MODEL] [-r ROUNDS] [--no-think]
 ```
 
 | 引数 | 説明 | デフォルト |
 |---|---|---|
 | `canticle` | `inferno`、`purgatorio`、`paradiso` のいずれか | `inferno` |
-| `-c`, `--canto` | 歌の番号 | `1` |
+| `-c`, `--canto` | 処理する歌の選択。`N`、`N-M`、`N-`（N以降）、`-M`（Mまで）、カンマ併記（例: `12-` `-20` `11-20` `1,5,7` `1,3-5,11-`）。選択された歌を順に処理する | 全歌 |
 | `-m`, `--model` | ベンダープレフィックス付きのモデル名（例: `openai:gpt-4.1-mini`） | `ollama:gemma4:26b-a4b-it-qat` |
 | `-r`, `--rounds` | 対訳を補完する最大ラウンド数 | `5` |
 | `--no-think` | thinkingを無効にする（`include_thoughts=False`） | 有効 |
@@ -115,7 +115,7 @@ uv run scripts/fix_quotes.py -d astra inferno -c 1 -m openai:gpt-5.6-terra
 | `canticle` | 処理する篇（`inferno`、`purgatorio`、`paradiso`）。複数指定可 | 必須 |
 | `-d`, `--dir` | `<canticle>/<NN>.txt` を含むディレクトリ | 必須 |
 | `-m`, `--model` | ベンダープレフィックス付きのモデル名 | 必須 |
-| `-c`, `--canto` | 歌の番号 | ディレクトリ下の全歌 |
+| `-c`, `--canto` | 処理する歌の選択（generate.py と同じ SPEC 記法） | 全歌 |
 | `-s`, `--segment` | 処理するセグメント番号（`3`、`1,3`） | 全セグメント |
 | `-n`, `--dry-run` | 書き戻さない（API呼び出しは行う） | 書き戻す |
 | `--check` | モデルを呼ばず、原文の構造と現在の鍵括弧が一致しないセグメントを報告するだけ | - |

@@ -10,6 +10,7 @@ import re
 import sys
 from pathlib import Path
 from dante_corpus import ref
+from dante_corpus.api import CANTO_SPEC_HELP, check_canto_spec, select_cantos
 from llm7shi import Client
 
 CANTICLE_NAMES = {
@@ -120,6 +121,70 @@ def parse_filled(filled: str, missing: set[int], lines) -> dict[int, str]:
     return translations
 
 
+def generate(canticle: str, canto: int, args: argparse.Namespace) -> None:
+    lines = ref(f"{canticle} {canto}")
+    text = canto_text(lines)
+    canticle_name = CANTICLE_NAMES.get(canticle, canticle)
+
+    out_dir = args.dir / canticle
+    out_path = out_dir / f"{canto:02d}.md"
+    trans_path = out_dir / f"{canto:02d}.txt"
+    client = Client(
+        model=args.model,
+        include_thoughts=not args.no_think,
+        show_params=False,
+        keep_history=False,
+    )
+
+    if trans_path.exists():
+        # Resume: the saved file already holds every translation extracted so far.
+        print(f"Resuming from {trans_path}")
+        translations = parse_translations_only(trans_path.read_text(), lines)
+    else:
+        if out_path.exists():
+            print(f"Skipped (already exists): {out_path}")
+            commentary = out_path.read_text()
+        else:
+            prompt = PROMPT.format(canticle_name=canticle_name, number=canto)
+            commentary = client([text, prompt]).text
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(commentary)
+            print(f"\nSaved to {out_path}")
+        translations = extract_translations(commentary, lines)
+
+    saved = trans_path.read_text() if trans_path.exists() else ""
+
+    def save():
+        # Saved every round, so an interrupted run can resume where it left off.
+        nonlocal saved
+        content = translations_only_text(lines, translations) + "\n"
+        if content != saved:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            trans_path.write_text(content)
+            saved = content
+            print(f"\nSaved to {trans_path}")
+
+    prompt = TRANSLATE_PROMPT.format(
+        canticle_name=canticle_name, number=canto, placeholder=PLACEHOLDER
+    )
+    for round_no in range(1, args.rounds + 1):
+        missing = {line.no for line in lines if line.no not in translations}
+        if not missing:
+            break
+        print(f"\n--- round {round_no}: {len(missing)} lines left ---")
+        filled = client(
+            [interleaved_text(lines, translations, PLACEHOLDER), prompt]
+        ).text
+        if not (added := parse_filled(filled, missing, lines)):
+            print("\nno progress, giving up", file=sys.stderr)
+            break
+        translations |= added
+        save()
+    save()  # in case the loop ended before any round wrote the file
+    if remaining := sorted(line.no for line in lines if line.no not in translations):
+        print(f"\nstill untranslated: {remaining}", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -128,9 +193,8 @@ def main():
     )
     parser.add_argument(
         "-c", "--canto",
-        type=int,
-        default=1,
-        help="Canto number (default: 1)",
+        metavar="SPEC",
+        help=CANTO_SPEC_HELP,
     )
     parser.add_argument(
         "-m", "--model",
@@ -156,67 +220,11 @@ def main():
     )
     args = parser.parse_args()
 
-    lines = ref(f"{args.canticle} {args.canto}")
-    text = canto_text(lines)
-    canticle_name = CANTICLE_NAMES.get(args.canticle, args.canticle)
+    if err := check_canto_spec([args.canticle], args.canto):
+        parser.error(err)
 
-    out_dir = args.dir / args.canticle
-    out_path = out_dir / f"{args.canto:02d}.md"
-    trans_path = out_dir / f"{args.canto:02d}.txt"
-    client = Client(
-        model=args.model,
-        include_thoughts=not args.no_think,
-        show_params=False,
-        keep_history=False,
-    )
-
-    if trans_path.exists():
-        # Resume: the saved file already holds every translation extracted so far.
-        print(f"Resuming from {trans_path}")
-        translations = parse_translations_only(trans_path.read_text(), lines)
-    else:
-        if out_path.exists():
-            print(f"Skipped (already exists): {out_path}")
-            commentary = out_path.read_text()
-        else:
-            prompt = PROMPT.format(canticle_name=canticle_name, number=args.canto)
-            commentary = client([text, prompt]).text
-            out_dir.mkdir(parents=True, exist_ok=True)
-            out_path.write_text(commentary)
-            print(f"\nSaved to {out_path}")
-        translations = extract_translations(commentary, lines)
-
-    saved = trans_path.read_text() if trans_path.exists() else ""
-
-    def save():
-        # Saved every round, so an interrupted run can resume where it left off.
-        nonlocal saved
-        content = translations_only_text(lines, translations) + "\n"
-        if content != saved:
-            out_dir.mkdir(parents=True, exist_ok=True)
-            trans_path.write_text(content)
-            saved = content
-            print(f"\nSaved to {trans_path}")
-
-    prompt = TRANSLATE_PROMPT.format(
-        canticle_name=canticle_name, number=args.canto, placeholder=PLACEHOLDER
-    )
-    for round_no in range(1, args.rounds + 1):
-        missing = {line.no for line in lines if line.no not in translations}
-        if not missing:
-            break
-        print(f"\n--- round {round_no}: {len(missing)} lines left ---")
-        filled = client(
-            [interleaved_text(lines, translations, PLACEHOLDER), prompt]
-        ).text
-        if not (added := parse_filled(filled, missing, lines)):
-            print("\nno progress, giving up", file=sys.stderr)
-            break
-        translations |= added
-        save()
-    save()  # in case the loop ended before any round wrote the file
-    if remaining := sorted(line.no for line in lines if line.no not in translations):
-        print(f"\nstill untranslated: {remaining}", file=sys.stderr)
+    for canto in select_cantos(args.canticle, args.canto):
+        generate(args.canticle, canto, args)
 
 
 if __name__ == "__main__":
