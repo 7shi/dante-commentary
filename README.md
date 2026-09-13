@@ -33,13 +33,25 @@ your-workspace/
 
 ## ファイル構成
 
-- `scripts/generate.py` — 解説記事および翻訳テキストの生成スクリプト（カント単位で処理し、セグメント分割は不使用）
-- `scripts/add_conclusion.py` — 解説記事に「結び」セクションが欠けている場合に追記するスクリプト
-- `scripts/fix_txt.py` — 翻訳テキストの鍵括弧を原文に合わせて補正するスクリプト（セグメント単位の後処理）
-- `scripts/normalize_md.py` — 解説記事の引用ブロック記法を正規の形式に整形するスクリプト（後処理）
-- `scripts/check_style.py` — 解説記事が「です・ます調」か「だ・である調」かを判定するスクリプト
-- `scripts/check_quote_blocks.py` — 解説記事の各 `##` セクションに含まれる引用ブロック数を検査するスクリプト
+- `scripts/` — 生成・後処理・検査用スクリプト一式
 - `segments/` — 各カントを場面の切れ目で分割した境界データ（`fix_txt.py` で使用。`inferno.jsonl`、`purgatorio.jsonl`、`paradiso.jsonl`）
 - `fable/`、`astra/`、`gemma4-26b/` — モデル別のサンプル出力
 
-各スクリプトのコマンドライン引数や処理内容の詳細は [scripts/README.md](scripts/README.md) を参照してください。
+## スクリプト一覧
+
+用途別に分類しています。各スクリプトのコマンドライン引数や処理内容の詳細は [scripts/README.md](scripts/README.md) を参照してください。
+
+**生成**
+
+- `scripts/generate.py` — 解説記事および翻訳テキストの生成スクリプト（カント単位で処理し、セグメント分割は不使用）
+
+**後処理**
+
+- `scripts/add_conclusion.py` — 解説記事に「結び」セクションが欠けている場合に追記
+- `scripts/fix_txt.py` — 翻訳テキストの鍵括弧を原文に合わせて補正（セグメント単位の後処理）
+- `scripts/normalize_md.py` — 解説記事の引用ブロック記法を正規の形式に整形
+
+**検査**
+
+- `scripts/check_style.py` — 解説記事が「です・ます調」か「だ・である調」かを判定（調査後、Gemini 3.8 Flash により「です・ます調」に統一）
+- `scripts/check_quote_blocks.py` — 解説記事の各 `##` セクションに含まれる引用ブロック数を検査
