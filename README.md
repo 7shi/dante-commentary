@@ -34,6 +34,7 @@ your-workspace/
 ## ファイル構成
 
 - `scripts/generate.py` — 解説記事および翻訳テキストの生成スクリプト（カント単位で処理し、セグメント分割は不使用）
+- `scripts/add_conclusion.py` — 解説記事に「結び」セクションが欠けている場合に追記するスクリプト
 - `scripts/fix_txt.py` — 翻訳テキストの鍵括弧を原文に合わせて補正するスクリプト（セグメント単位の後処理）
 - `scripts/normalize_md.py` — 解説記事の引用ブロック記法を正規の形式に整形するスクリプト（後処理）
 - `scripts/check_style.py` — 解説記事が「です・ます調」か「だ・である調」かを判定するスクリプト

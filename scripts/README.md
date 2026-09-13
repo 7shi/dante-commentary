@@ -48,6 +48,32 @@ uv run scripts/generate.py inferno -c 1 -m openai:gpt-6-astra -d astra
 
 なお、パラメータ規模の小さいローカルモデルでは、思考プロセスが終了しない、プレースホルダーをそのまま出力する、原文を複写するといった失敗が発生することがあります。具体的な失敗事例と対処法については [gemma4-26b/README.md](../gemma4-26b/README.md) を参照してください。
 
+## add_conclusion.py
+
+解説記事に「結び」セクションが欠けている場合に追記するスクリプトです。
+
+`generate.py` の現在の PROMPT は記事末尾に `## 結び――...` セクションを書くよう指示していますが、その変更より前に生成された記事にはこのセクションがありません。`add_conclusion.py` は、既存の解説記事全文をコンテキストとしてモデルへ渡し、その記事のための「結び」セクションのみを生成させ、`---` 区切りで末尾に追記します。
+
+```bash
+uv run scripts/add_conclusion.py <canticle>... -d DIR [-m MODEL] [-c SPEC] [-n]
+```
+
+| 引数 | 説明 | デフォルト |
+|---|---|---|
+| `canticle` | 処理する篇（`inferno`、`purgatorio`、`paradiso`）。複数指定可 | 必須 |
+| `-d`, `--dir` | 対象の `<canticle>/<NN>.md` を含むディレクトリ | 必須 |
+| `-m`, `--model` | ベンダープレフィックス付きのモデル名 | 必須（`--dry-run` 指定時は不要） |
+| `-c`, `--canto` | 処理するカントの指定（`generate.py` と同じ SPEC 記法） | 全カント |
+| `-n`, `--dry-run` | モデルを呼び出さず、追記対象となるファイルのみを報告する | 追記する |
+
+すでに `## 結び` または `## おわりに` という見出しを持つファイルはスキップされるため、篇全体に対して繰り返し実行しても安全です。
+
+**実行例**
+
+```bash
+uv run scripts/add_conclusion.py inferno -d astra -c 1 -m ollama:qwen3.6
+```
+
 ## fix_txt.py
 
 翻訳テキストの鍵括弧を原文に合わせて補正するスクリプトです（セグメント単位の後処理）。
