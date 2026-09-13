@@ -36,6 +36,7 @@ your-workspace/
 - `scripts/generate.py` — 解説記事および翻訳テキストの生成スクリプト（カント単位で処理し、セグメント分割は不使用）
 - `scripts/fix_txt.py` — 翻訳テキストの鍵括弧を原文に合わせて補正するスクリプト（セグメント単位の後処理）
 - `scripts/normalize_md.py` — 解説記事の引用ブロック記法を正規の形式に整形するスクリプト（後処理）
+- `scripts/check_style.py` — 解説記事が「です・ます調」か「だ・である調」かを判定するスクリプト
 - `segments/` — 各カントを場面の切れ目で分割した境界データ（`fix_txt.py` で使用。`inferno.jsonl`、`purgatorio.jsonl`、`paradiso.jsonl`）
 - `fable/`、`astra/`、`gemma4-26b/` — モデル別のサンプル出力
 
@@ -180,3 +181,29 @@ uv run scripts/normalize_md.py -d astra -d gemma4-26b -d fable
 |---|---|---|
 | `-d`, `--dir` | `<canticle>/<NN>.md` を含むディレクトリ（`-d dir1 -d dir2` のように複数指定可） | 必須 |
 | `-n`, `--dry-run` | 書き換えを行わず、変更対象ファイルのみを報告する | 書き込む |
+
+## 文体判定
+
+解説記事の文体（「です・ます調」か「だ・である調」か）は、歌ごとにモデルの出力揺れで異なる場合があります。`scripts/check_style.py` は、`>` で始まる引用行（原文・訳文の引用であり、著者自身の文体ではない）を除外したうえで、本文中の「。」で終わる文のうち「です。」「ます。」など丁寧語尾で終わる文の割合を算出し、判定します。
+
+```bash
+uv run scripts/check_style.py <file>... [--threshold RATIO]
+```
+
+| 引数 | 説明 | デフォルト |
+|---|---|---|
+| `files` | 判定対象の Markdown ファイル（複数指定可） | 必須 |
+| `--threshold` | この割合以上を「です・ます調」と判定する閾値 | `0.5` |
+
+**実行例**
+
+```bash
+uv run scripts/check_style.py astra/inferno/*.md
+```
+
+```
+astra/inferno/01.md: です・ます調 (です・ます比率 116/121 = 95.9%)
+astra/inferno/03.md: だ・である調 (です・ます比率 0/125 = 0.0%)
+```
+
+実際の出力を確認したところ、比率は歌ごとに0%付近か90〜100%付近にはっきり分かれており、閾値付近の曖昧な判定は生じていません。
