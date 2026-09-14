@@ -37,6 +37,8 @@ your-workspace/
 - `segments/` — 各カントを場面の切れ目で分割した境界データ（`fix_txt.py` で使用。`inferno.jsonl`、`purgatorio.jsonl`、`paradiso.jsonl`）
 - `fable/`、`astra/`、`gemma4-26b/` — モデル別のサンプル出力
 
+解説記事と翻訳テキスト・原文コーパスのアライメント点検・修正手順は [ALIGNMENT.md](ALIGNMENT.md) を参照してください。修正は Gemini 3.8 Flash で行います。
+
 ## スクリプト一覧
 
 用途別に分類しています。各スクリプトのコマンドライン引数や処理内容の詳細は [scripts/README.md](scripts/README.md) を参照してください。
