@@ -19,6 +19,10 @@ A "quote block" is a maximal run of consecutive lines starting with ">".
 Two such runs separated by a non-quote line (even a blank one) count as two
 blocks. Sections whose quote-block count is not exactly 1 (i.e. 0 or 2+)
 are reported, since the intended structure is one quote block per section.
+
+"結び" (conclusion) sections are the exception: they are not tied to a
+specific quoted passage, so 0 quote blocks is expected there. They are
+reported only when their quote-block count is 1 or more.
 """
 
 import argparse
@@ -53,7 +57,11 @@ def check_file(path: Path) -> list[tuple[str, int]]:
         end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
         body = text[start:end]
         count = count_quote_blocks(body)
-        if count != 1:
+        is_conclusion = m.group(1).startswith("結び")
+        if is_conclusion:
+            if count != 0:
+                offenders.append((m.group(1), count))
+        elif count != 1:
             offenders.append((m.group(1), count))
     return offenders
 
