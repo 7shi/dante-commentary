@@ -235,7 +235,7 @@ def main() -> int:
                         help="Directory holding <canticle>/<NN>.txt files (e.g. astra)")
     parser.add_argument("-m", "--model",
                         help="LLM model to use (e.g. openai:gpt-6-astra). Required unless --check")
-    parser.add_argument("-c", "--canto", metavar="SPEC", help=CANTO_SPEC_HELP)
+    parser.add_argument("-c", "--canto", help=CANTO_SPEC_HELP)
     parser.add_argument("-s", "--segment", type=parse_segment_arg,
                         help="Process only these segments of each canto, comma separated "
                              "(e.g. 3 or 1,3). Without it, every segment is processed")

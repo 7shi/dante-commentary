@@ -50,7 +50,7 @@ def main() -> int:
     parser.add_argument("-m", "--model",
                         help="Model name with optional vendor prefix (e.g. openai:gpt-4.1-mini). "
                              "Required unless --dry-run")
-    parser.add_argument("-c", "--canto", metavar="SPEC", help=CANTO_SPEC_HELP)
+    parser.add_argument("-c", "--canto", help=CANTO_SPEC_HELP)
     parser.add_argument("-n", "--dry-run", action="store_true",
                         help="Report which files would be changed, without calling the model "
                              "or writing anything")

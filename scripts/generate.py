@@ -195,7 +195,6 @@ def main():
     )
     parser.add_argument(
         "-c", "--canto",
-        metavar="SPEC",
         help=CANTO_SPEC_HELP,
     )
     parser.add_argument(
