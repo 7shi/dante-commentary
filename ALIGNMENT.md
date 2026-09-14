@@ -153,7 +153,7 @@ for no in target_range:
 uv run scripts/normalize_md.py -d astra
 
 # 2. 文体（です・ます調）の検査
-uv run scripts/check_style.py astra/inferno/02.md
+uv run scripts/check_style.py -d astra inferno -c 2
 
 # 3. 差分の最終確認（見出し行番号が（X～Y行）になっているかも確認）
 git diff astra/inferno/02.md

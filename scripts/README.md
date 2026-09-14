@@ -14,10 +14,10 @@ uv run scripts/generate.py <canticle> -d DIR [-c SPEC] [-m MODEL] [-r ROUNDS] [-
 |---|---|---|
 | `canticle` | 処理する篇（`inferno`、`purgatorio`、`paradiso` のいずれか） | 必須 |
 | `-c`, `--canto` | 処理するカントの指定（SPEC記法）。単一番号 `N`、範囲 `N-M`、`N-`（N以降）、`-M`（Mまで）、カンマ区切り（例: `12-`、`-20`、`11-20`、`1,5,7`、`1,3-5,11-`）に対応 | 全カント |
+| `-d`, `--dir` | 出力先ディレクトリ | 必須 |
 | `-m`, `--model` | ベンダープレフィックス付きのモデル名（例: `openai:gpt-4.1-mini`） | `ollama:gemma4:26b-a4b-it-qat` |
 | `-r`, `--rounds` | 未訳行を補完する最大ラウンド数 | `5` |
 | `--no-think` | 思考プロセス出力を無効にする（`include_thoughts=False`） | 有効 |
-| `-d`, `--dir` | 出力先ディレクトリ | 必須 |
 
 実行すると、指定ディレクトリ配下に以下の2種類のファイルが出力されます（例: `test/inferno/01.md`、`test/inferno/01.txt`）。
 
@@ -27,7 +27,7 @@ uv run scripts/generate.py <canticle> -d DIR [-c SPEC] [-m MODEL] [-r ROUNDS] [-
 **実行例**
 
 ```bash
-uv run scripts/generate.py inferno -c 1 -m openai:gpt-6-astra -d astra
+uv run scripts/generate.py -m openai:gpt-6-astra -d astra inferno -c 1
 ```
 
 ### 翻訳の生成
@@ -61,9 +61,9 @@ uv run scripts/add_conclusion.py <canticle>... -d DIR [-m MODEL] [-c SPEC] [-n]
 | 引数 | 説明 | デフォルト |
 |---|---|---|
 | `canticle` | 処理する篇（`inferno`、`purgatorio`、`paradiso`）。複数指定可 | 必須 |
+| `-c`, `--canto` | 処理するカントの指定（`generate.py` と同じ SPEC 記法） | 全カント |
 | `-d`, `--dir` | 対象の `<canticle>/<NN>.md` を含むディレクトリ | 必須 |
 | `-m`, `--model` | ベンダープレフィックス付きのモデル名 | 必須（`--dry-run` 指定時は不要） |
-| `-c`, `--canto` | 処理するカントの指定（`generate.py` と同じ SPEC 記法） | 全カント |
 | `-n`, `--dry-run` | モデルを呼び出さず、追記対象となるファイルのみを報告する | 追記する |
 
 すでに `## 結び` または `## おわりに` という見出しを持つファイルはスキップされるため、篇全体に対して繰り返し実行しても安全です。
@@ -71,7 +71,7 @@ uv run scripts/add_conclusion.py <canticle>... -d DIR [-m MODEL] [-c SPEC] [-n]
 **実行例**
 
 ```bash
-uv run scripts/add_conclusion.py inferno -d astra -c 1 -m ollama:qwen3.6
+uv run scripts/add_conclusion.py -m ollama:qwen3.6 -d astra inferno -c 1
 ```
 
 ## fix_txt.py
@@ -110,17 +110,17 @@ uv run scripts/fix_txt.py <canticle>... -d DIR [-m MODEL] [-c SPEC] [-s SEGMENT]
 | 引数 | 説明 | デフォルト |
 |---|---|---|
 | `canticle` | 処理する篇（`inferno`、`purgatorio`、`paradiso`）。複数指定可 | 必須 |
+| `-c`, `--canto` | 処理するカントの指定（`generate.py` と同じ SPEC 記法） | 全カント |
 | `-d`, `--dir` | 対象の `<canticle>/<NN>.txt` を含むディレクトリ | 必須 |
 | `-m`, `--model` | ベンダープレフィックス付きのモデル名 | 必須（`--check` 指定時は不要） |
-| `-c`, `--canto` | 処理するカントの指定（`generate.py` と同じ SPEC 記法） | 全カント |
-| `-s`, `--segment` | 処理するセグメント番号（例: `3`、`1,3`） | 全セグメント |
 | `-n`, `--dry-run` | ファイルへの書き戻しを行わない（API呼び出しのみ実行） | 書き戻す |
+| `-s`, `--segment` | 処理するセグメント番号（例: `3`、`1,3`） | 全セグメント |
 | `--check` | モデルを呼び出さず、原文構造と現在の鍵括弧が一致しないセグメントを検証・報告する | - |
 
 **実行例**
 
 ```bash
-uv run scripts/fix_txt.py inferno -d astra -c 1 -m openai:gpt-5.6-terra
+uv run scripts/fix_txt.py -m openai:gpt-5.6-terra -d astra inferno -c 1
 ```
 
 原文の `«»`・`“”`・`‘’` を台詞の範囲の根拠とし、階層に応じた入れ子関係を明示します（`«»` → `「」`、その内部の `“”` → `『』`、さらにその内部の `‘’` → `「」`）。訳文が独自に付与した鍵括弧（強調や語句の括り出し。地獄篇第1歌105行の `「フェルトとフェルトの間」`、第2歌28行の `「選ばれた器」` など）は、原文に対応する引用符が存在しないため除去します。ただし、括弧の**挿入位置までは厳密に指示しません**。原文が行の途中で台詞を開始している場合（例: `Rispuosemi: «Non omo…`）でも、日本語では語順の違いにより `「` の入る位置が変わるためです。台詞の途中で開始・終了するセグメントについては、原文自体が「開いていない台詞を閉じている」「閉じない台詞で終わっている」構造であることをそのまま提示し、その状態を保つよう指示しています。
@@ -185,18 +185,20 @@ uv run scripts/normalize_md.py -d astra -d gemma4-26b -d fable
 解説記事の文体は、歌ごとにモデルの出力揺れで異なる場合があります。`check_style.py` は、`>` で始まる引用行（原文・訳文の引用であり、著者自身の文体ではない）を除外したうえで、本文中の「。」で終わる文のうち「です。」「ます。」など丁寧語尾で終わる文の割合を算出し、判定します。
 
 ```bash
-uv run scripts/check_style.py <file>... [--threshold RATIO]
+uv run scripts/check_style.py <canticle>... -d DIR [-c SPEC] [--threshold RATIO]
 ```
 
 | 引数 | 説明 | デフォルト |
 |---|---|---|
-| `files` | 判定対象の Markdown ファイル（複数指定可） | 必須 |
+| `canticle` | 処理する篇（`inferno`、`purgatorio`、`paradiso`）。複数指定可 | 必須 |
+| `-c`, `--canto` | 処理するカントの指定（`generate.py` と同じ SPEC 記法） | 全カント |
+| `-d`, `--dir` | 対象の `<canticle>/<NN>.md` を含むディレクトリ | 必須 |
 | `--threshold` | この割合以上を「です・ます調」と判定する閾値 | `0.5` |
 
 **実行例**
 
 ```bash
-uv run scripts/check_style.py astra/inferno/*.md
+uv run scripts/check_style.py -d astra inferno
 ```
 
 ```
@@ -213,17 +215,19 @@ astra/inferno/03.md: です・ます調 (です・ます比率 125/125 = 100.0%)
 解説記事は、`#` のタイトルの後に導入文が続き、そのあとに `##` のセクションが並ぶ構成です（[PLAN.md](../PLAN.md) 参照）。各セクションは、引用ブロック（`>` で始まる連続行のまとまり）を1つだけ持つことを想定しています。`check_quote_blocks.py` は、この引用ブロック数がちょうど1でないセクション（0または2以上）を検出します。
 
 ```bash
-uv run scripts/check_quote_blocks.py <file>...
+uv run scripts/check_quote_blocks.py <canticle>... -d DIR [-c SPEC]
 ```
 
 | 引数 | 説明 | デフォルト |
 |---|---|---|
-| `files` | 検査対象の Markdown ファイル（複数指定可） | 必須 |
+| `canticle` | 処理する篇（`inferno`、`purgatorio`、`paradiso`）。複数指定可 | 必須 |
+| `-c`, `--canto` | 処理するカントの指定（`generate.py` と同じ SPEC 記法） | 全カント |
+| `-d`, `--dir` | 対象の `<canticle>/<NN>.md` を含むディレクトリ | 必須 |
 
 **実行例**
 
 ```bash
-uv run scripts/check_quote_blocks.py astra/inferno/*.md
+uv run scripts/check_quote_blocks.py -d astra inferno
 ```
 
 ```
@@ -243,9 +247,9 @@ uv run scripts/analyze_canto.py -d DIR <canticle>... [-c SPEC]
 
 | 引数 | 説明 | デフォルト |
 |---|---|---|
-| `-d`, `--dir` | 対象の `<canticle>/<NN>.md` を含むディレクトリ | 必須 |
 | `canticle` | 処理する篇（`inferno`、`purgatorio`、`paradiso`）。複数指定可 | 必須 |
 | `-c`, `--canto` | 処理するカントの指定（`generate.py` と同じ SPEC 記法） | 全カント |
+| `-d`, `--dir` | 対象の `<canticle>/<NN>.md` を含むディレクトリ | 必須 |
 
 **実行例**
 

@@ -29,6 +29,9 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from dante_corpus.api import CANTO_SPEC_HELP, check_canto_spec, select_cantos
+
+CANTICLES = ["inferno", "purgatorio", "paradiso"]
 
 SECTION_RE = re.compile(r"^## (.+)$", re.MULTILINE)
 
@@ -68,11 +71,27 @@ def check_file(path: Path) -> list[tuple[str, int]]:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    parser.add_argument("files", nargs="+", type=Path, help="Markdown files to check")
+    parser.add_argument("canticles", nargs="+", choices=CANTICLES, metavar="canticle",
+                        help="Canticle(s) to process: inferno, purgatorio, or paradiso")
+    parser.add_argument("-d", "--dir", type=Path, required=True,
+                        help="Directory holding <canticle>/<NN>.md files (e.g. astra)")
+    parser.add_argument("-c", "--canto", help=CANTO_SPEC_HELP)
     args = parser.parse_args()
 
+    if err := check_canto_spec(args.canticles, args.canto):
+        parser.error(err)
+
+    targets: list[Path] = []
+    for canticle in args.canticles:
+        for canto in select_cantos(canticle, args.canto):
+            path = args.dir / canticle / f"{canto:02d}.md"
+            if path.exists():
+                targets.append(path)
+    if not targets:
+        parser.error("no <canticle>/<NN>.md files found under the given directory")
+
     status = 0
-    for path in args.files:
+    for path in targets:
         try:
             offenders = check_file(path)
         except OSError as e:
