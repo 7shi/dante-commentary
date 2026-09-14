@@ -3,8 +3,7 @@
 generate.py's PROMPT now asks for a closing "## 結び――..." section, but
 commentaries written before that change have none. This script fills the gap
 for those older files: the whole existing commentary is sent to the model as
-context, and the response - a single 結び section - is appended to the file,
-separated from the existing content by a `---` rule.
+context, and the response - a single 結び section - is appended to the file.
 
 A file whose commentary already has a "## 結び" or "## おわりに" heading is
 left untouched, so the script can be re-run safely over a whole canticle.
@@ -91,7 +90,7 @@ def main() -> int:
             print(f"  unexpected response, skipping:\n{conclusion}", file=sys.stderr)
             continue
 
-        path.write_text(commentary.rstrip("\n") + "\n\n---\n\n" + conclusion + "\n")
+        path.write_text(commentary.rstrip("\n") + "\n\n" + conclusion + "\n")
         added += 1
 
     print(f"\nAdded {added} 結び section(s), skipped {skipped} already-closed file(s)"
