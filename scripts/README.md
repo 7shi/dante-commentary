@@ -232,3 +232,27 @@ astra/inferno/04.md: OK
 ```
 
 セクションが複数の引用ブロックを持つケースは頻出しており、正常な構成として扱ってよいのか、分割すべきなのかは今後の判断が必要です。「結び」「おわりに」のように総括のみで引用を持たないセクションも同様に検出されますが、これは想定の範囲内です。
+
+## analyze_canto.py
+
+解説記事（Markdown）の各セクション見出し、引用されている行番号、解説本文の冒頭、およびコーパス（`dante-corpus`）の総行数を抽出し一覧表示するスクリプトです。セクションごとの担当行範囲の照合やアライメント確認に使用します。
+
+```bash
+uv run scripts/analyze_canto.py -d DIR <canticle>... [-c SPEC]
+```
+
+| 引数 | 説明 | デフォルト |
+|---|---|---|
+| `-d`, `--dir` | 対象の `<canticle>/<NN>.md` を含むディレクトリ | 必須 |
+| `canticle` | 処理する篇（`inferno`、`purgatorio`、`paradiso`）。複数指定可 | 必須 |
+| `-c`, `--canto` | 処理するカントの指定（`generate.py` と同じ SPEC 記法） | 全カント |
+
+**実行例**
+
+```bash
+# 地獄篇第1歌の解析
+uv run scripts/analyze_canto.py -d astra inferno -c 1
+
+# 煉獄篇第1〜3歌の解析
+uv run scripts/analyze_canto.py -d astra purgatorio -c 1-3
+```

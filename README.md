@@ -57,3 +57,4 @@ your-workspace/
 
 - `scripts/check_style.py` — 解説記事が「です・ます調」か「だ・である調」かを判定（調査後、Gemini 3.8 Flash により「です・ます調」に統一）
 - `scripts/check_quote_blocks.py` — 解説記事の各 `##` セクションに含まれる引用ブロック数を検査
+- `scripts/analyze_canto.py` — 解説記事のセクション見出し、引用行、本文冒頭、コーパス総行数を抽出し一覧表示（行範囲の照合・確認用）
