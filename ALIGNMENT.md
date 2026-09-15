@@ -149,7 +149,7 @@ for no in target_range:
 編集後、以下のコマンドでフォーマットと文体を検証する。
 
 ```bash
-# 1. 引用フォーマットの正規化・検査
+# 1. 引用ブロックを原文コーパス・訳文テキストから再構成し正規化
 uv run scripts/fix_quote_blocks.py -d astra
 
 # 2. 文体（です・ます調）の検査
