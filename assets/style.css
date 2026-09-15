@@ -1,0 +1,428 @@
+:root {
+    --bg: #fdfaf5;
+    --fg: #000000;
+    --muted: #000000;
+    --accent: #7a1f1f;
+    --accent-fg: #ffffff;
+    --border: #e4dccb;
+    --panel-bg: #ffffff;
+    --code-bg: #f2ece0;
+    --link: #8a3814;
+    --dim-fg: #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #1c1a17;
+        --fg: #ece6db;
+        --muted: #ece6db;
+        --accent: #d98c5f;
+        --accent-fg: #1c1a17;
+        --border: #3a352d;
+        --panel-bg: #24211c;
+        --code-bg: #2a261f;
+        --link: #e0a26a;
+        --dim-fg: #ece6db;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans CJK JP", system-ui, sans-serif;
+    line-height: 1.7;
+}
+
+.container {
+    max-width: 900px;
+    padding: 1.5rem 1.25rem 4rem;
+}
+
+a {
+    color: var(--link);
+}
+
+h1, h2 {
+    line-height: 1.3;
+}
+
+/* app layout: fixed sidebar + scrolling content */
+
+.layout {
+    display: flex;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+.sidebar {
+    flex: 0 0 220px;
+    width: 220px;
+    box-sizing: border-box;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 1.25rem 1rem;
+    border-right: 1px solid var(--border);
+    background: var(--panel-bg);
+}
+
+.sidebar-title {
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+}
+
+.sidebar-title a {
+    text-decoration: none;
+}
+
+.sidebar-section {
+    margin-bottom: 1.5rem;
+}
+
+.sidebar-section h2 {
+    font-size: 0.9rem;
+    margin: 0 0 0.5rem;
+}
+
+.sidebar-section h2 a {
+    display: block;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 0.35rem 0.6rem;
+    text-decoration: none;
+    color: var(--link);
+    font-weight: 600;
+}
+
+.sidebar-section h2 a:hover {
+    border-color: var(--accent);
+}
+
+.sidebar-section h2 a.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+}
+
+.content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+@media (max-width: 800px) {
+    .layout {
+        flex-direction: column;
+    }
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+}
+
+/* index page */
+
+.index-header {
+    margin-bottom: 2rem;
+}
+
+.index-header h1 {
+    font-size: 2rem;
+    margin-bottom: 0.25rem;
+}
+
+.subtitle {
+    color: var(--muted);
+    margin: 0 0 0.75rem;
+}
+
+.repo-link {
+    display: inline-block;
+    font-size: 0.9rem;
+}
+
+.lead {
+    color: var(--fg);
+}
+
+.content .container section {
+    margin-top: 2rem;
+}
+
+.content .container section h2 {
+    font-size: 1.15rem;
+    margin-bottom: 0.5rem;
+}
+
+.canticle-list, .canto-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.canticle-list li, .canto-list li {
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.canticle-list a, .canto-list a {
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.canto-list-title {
+    color: var(--muted);
+    margin-left: 0.75rem;
+}
+
+/* horizontal button grid (sidebar canto list) */
+
+ul.link-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+ul.link-row a {
+    display: inline-block;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 0.2rem 0.5rem;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+ul.link-row a:hover {
+    border-color: var(--accent);
+}
+
+ul.canto-row a {
+    min-width: 2.2em;
+    text-align: center;
+}
+
+ul.canto-row a.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+}
+
+/* page header */
+
+.page-header {
+    margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+    margin: 0;
+}
+
+.canto-subtitle {
+    color: var(--muted);
+    margin: 0.25rem 0 0;
+}
+
+/* canto intro (from the commentary's lead paragraphs) */
+
+.canto-intro {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.canto-intro p:last-child {
+    margin-bottom: 0;
+}
+
+/* canto page: one section per commentary block */
+
+.content .container section.segment {
+    margin-top: 1.5rem;
+}
+
+.segment-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.6rem;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+}
+
+.segment-heading a {
+    text-decoration: none;
+    color: var(--fg);
+}
+
+.segment-range {
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+/* a section can hold several units: quote+commentary pieces, and plain
+   (commentary-less) pieces for lines no quote in the section touches */
+
+.unit + .unit {
+    margin-top: 1rem;
+}
+
+/* bilingual line-by-line canto text */
+
+.bilingual {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+
+.unit.plain .bilingual {
+    background: transparent;
+    border-style: dashed;
+}
+
+.unit.plain .text {
+    color: var(--dim-fg);
+}
+
+.unit.plain .lineno a {
+    color: var(--dim-fg);
+}
+
+/* a quoted line inside an annotated unit that the commentary doesn't
+   directly quote (a small gap between two quotes in the same run) */
+
+.unit.annotated .line.unquoted .text {
+    color: var(--dim-fg);
+}
+
+/* an annotated unit with commentary merges its bilingual block and its
+   commentary into one bordered block, split by an accent rule */
+
+.unit.annotated:not(.no-commentary) .bilingual {
+    border-radius: 12px 12px 0 0;
+    border-bottom: none;
+}
+
+.line {
+    display: grid;
+    grid-template-columns: 3rem 1fr 1fr;
+    column-gap: 1.25rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.line:last-child {
+    border-bottom: none;
+}
+
+.line:nth-child(3n) {
+    border-bottom: 1px solid var(--accent);
+}
+
+.line:last-child.line:nth-child(3n) {
+    border-bottom: none;
+}
+
+.lineno {
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-align: right;
+    padding-top: 0.1rem;
+}
+
+.lineno a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.text[lang="it"] {
+    color: var(--fg);
+}
+
+@media (max-width: 700px) {
+    .line {
+        grid-template-columns: 2.3rem 1fr;
+        row-gap: 0.15rem;
+    }
+    .lineno {
+        grid-row: span 2;
+    }
+}
+
+/* commentary prose following a bilingual block */
+
+.commentary {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 0 0 12px 12px;
+    padding: 1rem 1.25rem;
+}
+
+.commentary p:last-child {
+    margin-bottom: 0;
+}
+
+.commentary ul, .commentary ol {
+    padding-left: 1.5rem;
+}
+
+/* conclusion */
+
+.conclusion {
+    margin-top: 2rem;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+
+.conclusion h2 {
+    margin-top: 0;
+    font-size: 1.1rem;
+}
+
+.conclusion .commentary {
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+}
+
+/* credit line + chapter nav */
+
+.credit {
+    margin-top: 2rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.chapter-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    font-size: 0.95rem;
+}
+
+.chapter-nav a {
+    text-decoration: none;
+}
