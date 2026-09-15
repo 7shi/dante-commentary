@@ -74,13 +74,13 @@ uv run scripts/add_conclusion.py <canticle>... -d DIR [-m MODEL] [-c SPEC] [-n]
 uv run scripts/add_conclusion.py -m ollama:qwen3.6 -d astra inferno -c 1
 ```
 
-## fix_txt.py
+## fix_brackets.py
 
 翻訳テキストの鍵括弧を原文に合わせて補正するスクリプトです（セグメント単位の後処理）。
 
 ### セグメント分割
 
-`generate.py` 自体はセグメント分割を行わずカント全体を処理しますが、後処理である鍵括弧の補正（`fix_txt.py`）はセグメント単位で実行します。
+`generate.py` 自体はセグメント分割を行わずカント全体を処理しますが、後処理である鍵括弧の補正（`fix_brackets.py`）はセグメント単位で実行します。
 
 `segments/<canticle>.jsonl` は、各カントを場面の切れ目（エピソード境界）で分割した行範囲データです。1行に1カント分のデータが格納されており、カント全体の行範囲を隙間なくカバーしています。
 
@@ -101,10 +101,10 @@ jq -c '{canto: .chapter, total_lines: .response.total_lines, boundaries}' \
 
 1行単位で翻訳すると、台詞が複数行に跨る場合に括弧の開始と終了の整合性が保たれないことがあります。たとえば地獄篇第1歌の astra 出力では、67〜78行が一続きの発言であるにもかかわらず75行末で一度閉じられ76行で開き直されていたり、93行で始まった発言が96行末で早々に閉じられていたりします（原文では129行まで台詞が継続）。
 
-`fix_txt.py` は、この台詞の鍵括弧をセグメント単位で補正します。訳し直しは行わず、セグメントごとの原文と既存の訳文をモデルに渡して、**鍵括弧のみを修正した同一の訳文**を出力させます。
+`fix_brackets.py` は、この台詞の鍵括弧をセグメント単位で補正します。訳し直しは行わず、セグメントごとの原文と既存の訳文をモデルに渡して、**鍵括弧のみを修正した同一の訳文**を出力させます。
 
 ```bash
-uv run scripts/fix_txt.py <canticle>... -d DIR [-m MODEL] [-c SPEC] [-s SEGMENT] [-n] [--check]
+uv run scripts/fix_brackets.py <canticle>... -d DIR [-m MODEL] [-c SPEC] [-s SEGMENT] [-n] [--check]
 ```
 
 | 引数 | 説明 | デフォルト |
@@ -120,7 +120,7 @@ uv run scripts/fix_txt.py <canticle>... -d DIR [-m MODEL] [-c SPEC] [-s SEGMENT]
 **実行例**
 
 ```bash
-uv run scripts/fix_txt.py -m openai:gpt-5.6-terra -d astra inferno -c 1
+uv run scripts/fix_brackets.py -m openai:gpt-5.6-terra -d astra inferno -c 1
 ```
 
 原文の `«»`・`“”`・`‘’` を台詞の範囲の根拠とし、階層に応じた入れ子関係を明示します（`«»` → `「」`、その内部の `“”` → `『』`、さらにその内部の `‘’` → `「」`）。訳文が独自に付与した鍵括弧（強調や語句の括り出し。地獄篇第1歌105行の `「フェルトとフェルトの間」`、第2歌28行の `「選ばれた器」` など）は、原文に対応する引用符が存在しないため除去します。ただし、括弧の**挿入位置までは厳密に指示しません**。原文が行の途中で台詞を開始している場合（例: `Rispuosemi: «Non omo…`）でも、日本語では語順の違いにより `「` の入る位置が変わるためです。台詞の途中で開始・終了するセグメントについては、原文自体が「開いていない台詞を閉じている」「閉じない台詞で終わっている」構造であることをそのまま提示し、その状態を保つよう指示しています。
@@ -139,7 +139,7 @@ uv run scripts/fix_txt.py -m openai:gpt-5.6-terra -d astra inferno -c 1
 `--check` オプションを使用すると、モデルを呼び出さずにこの判定（原文構造との突き合わせ検証）のみを実行し、不一致のセグメントを一覧表示します。API利用料をかけずに修正対象を事前確認したい場合や、以前の実行結果を手元で再確認したい場合に有用です。
 
 ```bash
-uv run scripts/fix_txt.py -d astra inferno --check
+uv run scripts/fix_brackets.py -d astra inferno --check
 ```
 
 何度実行しても修正されないセグメントが残る場合があります。その多くは、セグメントの区切り位置が文として完結しているように見えるため、原文では台詞が続いているにもかかわらず、モデルがそのセグメント末尾で括弧を閉じてしまうケースです。これはモデルの再試行では解消しにくいため、`.txt` ファイルを手動で修正します。

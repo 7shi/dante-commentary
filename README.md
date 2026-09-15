@@ -34,7 +34,7 @@ your-workspace/
 ## ファイル構成
 
 - `scripts/` — 生成・後処理・検査用スクリプト一式
-- `segments/` — 各カントを場面の切れ目で分割した境界データ（`fix_txt.py` で使用。`inferno.jsonl`、`purgatorio.jsonl`、`paradiso.jsonl`）
+- `segments/` — 各カントを場面の切れ目で分割した境界データ（`fix_brackets.py` で使用。`inferno.jsonl`、`purgatorio.jsonl`、`paradiso.jsonl`）
 - `fable/`、`astra/`、`gemma4-26b/` — モデル別のサンプル出力
 
 解説記事と翻訳テキスト・原文コーパスのアライメント点検・修正手順は [ALIGNMENT.md](ALIGNMENT.md) を参照してください。修正は Gemini 3.8 Flash で行います。
@@ -50,7 +50,7 @@ your-workspace/
 **後処理**
 
 - `scripts/add_conclusion.py` — 解説記事に「結び」セクションが欠けている場合に追記
-- `scripts/fix_txt.py` — 翻訳テキストの鍵括弧を原文に合わせて補正（セグメント単位の後処理）
+- `scripts/fix_brackets.py` — 翻訳テキストの鍵括弧を原文に合わせて補正（セグメント単位の後処理）
 - `scripts/normalize_md.py` — 解説記事の引用ブロック記法を正規の形式に整形
 
 **検査**
