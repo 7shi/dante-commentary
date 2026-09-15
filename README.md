@@ -51,7 +51,7 @@ your-workspace/
 
 - `scripts/add_conclusion.py` — 解説記事に「結び」セクションが欠けている場合に追記
 - `scripts/fix_brackets.py` — 翻訳テキストの鍵括弧を原文に合わせて補正（セグメント単位の後処理）
-- `scripts/normalize_md.py` — 解説記事の引用ブロック記法を正規の形式に整形
+- `scripts/fix_quote_blocks.py` — 解説記事の引用ブロック記法を正規の形式に整形
 
 **検査**
 

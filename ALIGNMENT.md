@@ -150,7 +150,7 @@ for no in target_range:
 
 ```bash
 # 1. 引用フォーマットの正規化・検査
-uv run scripts/normalize_md.py -d astra
+uv run scripts/fix_quote_blocks.py -d astra
 
 # 2. 文体（です・ます調）の検査
 uv run scripts/check_style.py -d astra inferno -c 2

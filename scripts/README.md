@@ -148,11 +148,11 @@ uv run scripts/fix_brackets.py -d astra inferno --check
 2. その範囲と食い違っている箇所を特定し、翻訳ファイル（`.txt`）に鍵括弧を1つ追加・削除して対応を合わせます（文言や句読点には手を加えないでください）。
 3. 再度 `--check` を実行し、不一致が解消されたことを確認します（モデルを呼び出さないためコストはかかりません）。
 
-## normalize_md.py
+## fix_quote_blocks.py
 
 解説記事の引用ブロック記法を正規の形式に整形するスクリプトです（後処理）。
 
-モデルが出力する解説記事の Markdown には、引用ブロックの形式に揺れが生じることがあります（原文行末の強制改行用スペース2つの欠落、訳文行末への不要な空白、引用ペア間の空行の欠落や重複など）。`normalize_md.py` は、`>` で始まる引用行をパターン判定し（数字始まりなら原文、`（` または `(` 始まりなら訳文）、以下の形式に統一します。
+モデルが出力する解説記事の Markdown には、引用ブロックの形式に揺れが生じることがあります（原文行末の強制改行用スペース2つの欠落、訳文行末への不要な空白、引用ペア間の空行の欠落や重複など）。`fix_quote_blocks.py` は、`>` で始まる引用行をパターン判定し（数字始まりなら原文、`（` または `(` 始まりなら訳文）、以下の形式に統一します。
 
 ```markdown
 > 1 Nel mezzo del cammin di nostra vita  
@@ -170,7 +170,7 @@ uv run scripts/fix_brackets.py -d astra inferno --check
 `-d` で指定したディレクトリ配下の `<canticle>/<NN>.md`（`inferno`、`purgatorio`、`paradiso`）を直接上書き更新します。モデルを呼び出さないため即座に実行でき、何度実行しても同一の結果が得られます（冪等性）。
 
 ```bash
-uv run scripts/normalize_md.py -d astra -d gemma4-26b -d fable
+uv run scripts/fix_quote_blocks.py -d astra -d gemma4-26b -d fable
 ```
 
 | 引数 | 説明 | デフォルト |
