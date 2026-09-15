@@ -1,0 +1,16 @@
+<aside class="sidebar">
+    <div class="sidebar-title"><a href="{{ base }}index.html">神曲 対訳注釈</a></div>
+
+    {% for part in sidebar_parts %}
+    <section class="sidebar-section">
+        <h2>
+            <a href="{{ base }}{{ part.href }}" class="part-link{% if current_part is defined and current_part == part.key %} active{% endif %}">{{ part.label }}</a>
+        </h2>
+        <ul class="link-row canto-row">
+            {% for c in part.cantos %}
+            <li><a href="{{ base }}{{ c.href }}"{% if current_part is defined and current_part == part.key and current_canto is defined and current_canto == c.number %} class="active"{% endif %}>{{ c.number }}</a></li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endfor %}
+</aside>

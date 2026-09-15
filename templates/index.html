@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>神曲 対訳注釈 — La Divina Commedia</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="index-page">
+    <div class="layout">
+        {% include "_sidebar.html" %}
+        <main class="content">
+            <div class="container">
+                <header class="index-header">
+                    <h1>神曲 対訳注釈</h1>
+                    <p class="subtitle">ダンテ『神曲』の原文全行に、注釈を埋め込んだ対訳。</p>
+                    <a href="{{ repo_url }}" class="repo-link" target="_blank" rel="noopener">📦 Repository</a>
+                </header>
+
+                <p class="lead">
+                    このサイトの日本語訳と解説は、{{ model_name }} による生成であり、専門の翻訳者・研究者による校閲を経ていません。
+                    誤りや誤訳が含まれる可能性があります。参考・研究目的での閲覧を想定した試みです。
+                    原文イタリア語は <a href="{{ corpus_url }}" target="_blank" rel="noopener">dante-corpus</a> に由来し、パブリックドメインです。
+                    このサイトの日本語訳・解説は <a href="https://creativecommons.org/publicdomain/zero/1.0/deed.ja" target="_blank" rel="noopener">CC0 1.0</a>（パブリックドメイン提供）で公開しています。
+                </p>
+
+                <section>
+                    <h2>読み方</h2>
+                    <p>
+                        各歌のページでは、原文（イタリア語）と日本語訳を1行ずつ左右に並べた対訳を、行を欠かさず全て通して読めます。
+                        場面や主題を論じた解説記事から引用された範囲は、対訳に続けて見出しと解説文が付きます。
+                        解説が付いていない範囲は、対訳のみを淡く表示し、読み飛ばせるようにしています。
+                        行番号はページ内リンク（<code>#L12</code> の形式）になっており、他の歌や解説からの参照に使えます。
+                    </p>
+                </section>
+
+                <section>
+                    <h2>三篇</h2>
+                    <ul class="canticle-list">
+                        {% for part in sidebar_parts %}
+                        <li><a href="{{ part.href }}">{{ part.label }}</a>（全{{ part.cantos|length }}歌）</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

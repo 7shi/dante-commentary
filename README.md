@@ -34,8 +34,9 @@ your-workspace/
 ## ファイル構成
 
 - `scripts/` — 生成・後処理・検査用スクリプト一式
+- `templates/` — GitHub Pages 公開用の静的サイトビルダー（Jinja2テンプレート・`build.py`・`deploy.sh`）。詳細は [templates/README.md](templates/README.md) を参照
 - `segments/` — 各カントを場面の切れ目で分割した境界データ（`fix_brackets.py` で使用。`inferno.jsonl`、`purgatorio.jsonl`、`paradiso.jsonl`）
-- `fable/`、`astra/`、`gemma4-26b/` — モデル別のサンプル出力
+- `fable/`、`astra/`、`gemma4-26b/` — モデル別のサンプル出力（サイトは `astra/` を使用）
 
 解説記事と翻訳テキスト・原文コーパスのアライメント点検・修正手順は [ALIGNMENT.md](ALIGNMENT.md) を参照してください。修正は Gemini 3.8 Flash で行います。
 
@@ -58,3 +59,13 @@ your-workspace/
 - `scripts/check_style.py` — 解説記事が「です・ます調」か「だ・である調」かを判定（調査後、Gemini 3.8 Flash により「です・ます調」に統一）
 - `scripts/check_quote_blocks.py` — 解説記事の各 `##` セクションに含まれる引用ブロック数を検査
 - `scripts/analyze_canto.py` — 解説記事のセクション見出し、引用行、本文冒頭、コーパス総行数を抽出し一覧表示（行範囲の照合・確認用）
+
+## サイトの生成・公開
+
+```bash
+make build   # dist/ に静的サイトを生成
+make serve   # dist/ をローカルで確認（http://localhost:8000）
+make deploy  # build の上で gh-pages ブランチへ公開
+```
+
+詳細は [templates/README.md](templates/README.md) を参照してください。

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ canticle_label }} 第{{ canto.number }}歌 — 神曲 対訳注釈</title>
+    <link rel="stylesheet" href="{{ base }}assets/style.css">
+</head>
+<body>
+    <div class="layout">
+        {% include "_sidebar.html" %}
+        <main class="content">
+            <div class="container">
+                <header class="page-header">
+                    <h1>{{ canticle_label }} 第{{ canto.number }}歌</h1>
+                    {% if canto.title %}<p class="canto-subtitle">{{ canto.title }}</p>{% endif %}
+                </header>
+
+                {% if canto.intro_html %}
+                <div class="canto-intro">{{ canto.intro_html|safe }}</div>
+                {% endif %}
+
+                {% for block in canto.blocks %}
+                <section class="segment {{ 'annotated' if block.annotated else 'plain' }}" id="s{{ block.start }}">
+                    {% if block.annotated %}
+                    <h2 class="segment-heading">
+                        <a href="#s{{ block.start }}" title="この節への固定リンク">{{ block.heading }}</a>
+                        <span class="segment-range">{{ block.start }}〜{{ block.end }}行</span>
+                    </h2>
+                    {% endif %}
+                    <div class="bilingual">
+                        {% for lineno, it, ja in block.lines %}
+                        <div class="line" id="L{{ lineno }}">
+                            <span class="lineno"><a href="#L{{ lineno }}" title="この行への固定リンク">{{ lineno }}</a></span>
+                            <span class="text" lang="it">{{ it }}</span>
+                            <span class="text" lang="ja">{{ ja }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if block.annotated %}
+                    <div class="commentary">{{ block.body_html|safe }}</div>
+                    {% endif %}
+                </section>
+                {% endfor %}
+
+                {% if canto.conclusion_heading %}
+                <section class="conclusion">
+                    <h2>{{ canto.conclusion_heading }}</h2>
+                    <div class="commentary">{{ canto.conclusion_html|safe }}</div>
+                </section>
+                {% endif %}
+
+                <p class="credit">
+                    日本語訳・解説: {{ model_name }} による生成（<a href="{{ repo_url }}" target="_blank" rel="noopener">dante-commentary</a>、<a href="https://creativecommons.org/publicdomain/zero/1.0/deed.ja" target="_blank" rel="noopener">CC0 1.0</a>）。
+                    原文出典: <a href="{{ corpus_url }}" target="_blank" rel="noopener">dante-corpus</a>。
+                </p>
+
+                <nav class="chapter-nav">
+                    {% if prev_href %}<a href="{{ base }}{{ prev_href }}" class="prev-link">&larr; {{ prev_label }}</a>{% else %}<span></span>{% endif %}
+                    <a href="{{ base }}{{ part_href }}">{{ canticle_label }}</a>
+                    {% if next_href %}<a href="{{ base }}{{ next_href }}" class="next-link">{{ next_label }} &rarr;</a>{% else %}<span></span>{% endif %}
+                </nav>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
