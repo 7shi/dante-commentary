@@ -20,6 +20,15 @@ all 100 cantos), so that's used directly as the section boundaries -- no
 separate segmentation data is needed. A canto whose headings don't tile
 cleanly falls back to a single unannotated block covering the whole text,
 with a warning, rather than mis-attributing commentary to the wrong lines.
+
+Within a section, the commentary quotes the original in one or more
+"> N text" / "> （trans）" runs, each immediately followed by the prose that
+discusses it. build_section_pieces() turns each such run + its prose into
+one merged bilingual+commentary piece (spanning from the run's first to
+last quoted line, so a small internal gap between two quotes in the same
+run stays inside that piece), and any lines within the section's range
+that no run touches at all become their own commentary-less piece, placed
+where they actually fall between pieces.
 """
 
 from __future__ import annotations
@@ -57,23 +66,32 @@ HEAD_RE = re.compile(
 
 TITLE_PREFIX_RE = re.compile(r"^ダンテ『神曲』.+?篇第\d+歌――")
 
+QUOTE_LINE_RE = re.compile(r"^>\s*(\d+)\s")
+
 
 @dataclass
 class Section:
     heading: str
     start: int
     end: int
-    body_md: str
+    raw_body: str  # unstripped text following the heading, quote blocks intact
 
 
 @dataclass
-class Block:
+class Piece:
     start: int
     end: int
-    lines: list[tuple[int, str, str]]  # (lineno, it, ja)
+    lines: list[tuple[int, str, str, bool]]  # (lineno, it, ja, quoted)
     annotated: bool = False
-    heading: str = ""
     body_html: str = ""
+
+
+@dataclass
+class SectionBlock:
+    start: int
+    end: int
+    heading: str  # "" for the whole-canto fallback block
+    pieces: list[Piece] = field(default_factory=list)
 
 
 @dataclass
@@ -82,7 +100,7 @@ class CantoPage:
     number: int
     title: str
     intro_html: str
-    blocks: list[Block] = field(default_factory=list)
+    blocks: list[SectionBlock] = field(default_factory=list)
     conclusion_heading: str = ""
     conclusion_html: str = ""
     total_lines: int = 0
@@ -115,18 +133,126 @@ def parse_commentary(text: str) -> tuple[str, str, list[Section], tuple[str, str
     for part in parts[1:]:
         head_line, _, body = part.partition("\n")
         heading_text = head_line[3:].strip()  # strip "## "
-        body_md = strip_quote_blocks(body)
         if heading_text.startswith("結び"):
-            conclusion = (heading_text, body_md)
+            conclusion = (heading_text, strip_quote_blocks(body))
             continue
         m = HEAD_RE.match(heading_text)
         if not m or not m.group("start"):
-            sections.append(Section(heading_text, 0, 0, body_md))
+            sections.append(Section(heading_text, 0, 0, body))
             continue
         start = int(m.group("start"))
         end = int(m.group("end")) if m.group("end") else start
-        sections.append(Section(m.group("title").strip(), start, end, body_md))
+        sections.append(Section(m.group("title").strip(), start, end, body))
     return title, intro_md, sections, conclusion
+
+
+def split_runs(body: str) -> list[tuple[str, list[str]]]:
+    """Split a section's raw body into ('quote' | 'prose', lines) chunks,
+    in order, by whether each line starts a '>' block-quote line."""
+    chunks: list[tuple[str, list[str]]] = []
+    for line in body.split("\n"):
+        kind = "quote" if line.startswith(">") else "prose"
+        if chunks and chunks[-1][0] == kind:
+            chunks[-1][1].append(line)
+        else:
+            chunks.append((kind, [line]))
+    return chunks
+
+
+def build_section_pieces(
+    start: int, end: int, raw_body: str,
+    line_tuple,
+) -> list[Piece]:
+    """Turn one section's raw body into pieces covering start..end.
+
+    Each '>' quote run pairs with the prose immediately following it into
+    one annotated piece, spanning from the run's first to last quoted
+    line (so a small gap between two quotes in the same run stays inside
+    that piece). Prose before the first run is folded into the first
+    piece's commentary. A run whose quoted lines fall entirely outside
+    start..end (a rare authoring slip) is dropped, its prose folded into
+    the neighboring piece, so lines aren't duplicated across sections.
+    Any lines in start..end that no run touches become their own
+    commentary-less piece, positioned where they actually fall.
+    """
+    chunks = split_runs(raw_body)
+
+    leading_prose = ""
+    i = 0
+    if chunks and chunks[0][0] == "prose":
+        leading_prose = "\n".join(chunks[0][1]).strip()
+        i = 1
+
+    raw_groups: list[tuple[list[int], str]] = []
+    while i < len(chunks):
+        run_lines = chunks[i][1]
+        nums = [int(m.group(1)) for m in (QUOTE_LINE_RE.match(l) for l in run_lines) if m]
+        prose = ""
+        i += 1
+        if i < len(chunks) and chunks[i][0] == "prose":
+            prose = "\n".join(chunks[i][1]).strip()
+            i += 1
+        raw_groups.append((nums, prose))
+
+    if leading_prose and raw_groups:
+        nums0, prose0 = raw_groups[0]
+        raw_groups[0] = (nums0, f"{leading_prose}\n\n{prose0}".strip())
+
+    def fold_into_previous(groups: list[tuple[int, int, set[int], str]], prose: str) -> None:
+        if not prose:
+            return
+        if groups:
+            gs, ge, gq, gb = groups[-1]
+            groups[-1] = (gs, ge, gq, f"{gb}\n\n{prose}".strip() if gb else prose)
+
+    groups: list[tuple[int, int, set[int], str]] = []
+    for nums, prose in raw_groups:
+        if not nums:
+            fold_into_previous(groups, prose)
+            continue
+        cmin, cmax = max(min(nums), start), min(max(nums), end)
+        if cmin > cmax:
+            fold_into_previous(groups, prose)
+            continue
+        groups.append((cmin, cmax, {n for n in nums if cmin <= n <= cmax}, prose))
+
+    # A section's commentary sometimes quotes out of order (e.g. the
+    # conclusion first, then the earlier line it draws on as an example),
+    # so place groups by where their lines actually fall, not file order.
+    # Overlapping ranges (not seen in practice, but possible) are merged
+    # rather than rendering the same line twice.
+    groups.sort(key=lambda g: g[0])
+    merged: list[tuple[int, int, set[int], str]] = []
+    for gmin, gmax, quoted, prose in groups:
+        if merged and gmin <= merged[-1][1]:
+            pmin, pmax, pquoted, pprose = merged[-1]
+            merged[-1] = (pmin, max(pmax, gmax), pquoted | quoted,
+                          f"{pprose}\n\n{prose}".strip() if pprose else prose)
+        else:
+            merged.append((gmin, gmax, quoted, prose))
+    groups = merged
+
+    pieces: list[Piece] = []
+    cursor = start
+    for gmin, gmax, quoted, prose in groups:
+        if cursor < gmin:
+            pieces.append(Piece(
+                start=cursor, end=gmin - 1,
+                lines=[line_tuple(i) + (False,) for i in range(cursor, gmin)],
+            ))
+        pieces.append(Piece(
+            start=gmin, end=gmax,
+            lines=[line_tuple(i) + (i in quoted,) for i in range(gmin, gmax + 1)],
+            annotated=True,
+            body_html=md.markdown(prose) if prose else "",
+        ))
+        cursor = gmax + 1
+    if cursor <= end:
+        pieces.append(Piece(
+            start=cursor, end=end,
+            lines=[line_tuple(i) + (False,) for i in range(cursor, end + 1)],
+        ))
+    return pieces
 
 
 def read_lines(path: Path) -> list[str]:
@@ -160,21 +286,21 @@ def build_canto(canticle: str, number: int) -> CantoPage:
     if tiles and expected - 1 != n:
         tiles = False
 
-    blocks: list[Block] = []
+    blocks: list[SectionBlock] = []
     if tiles:
         for s in sections:
-            blocks.append(Block(
+            blocks.append(SectionBlock(
                 start=s.start,
                 end=s.end,
-                lines=[line_tuple(i) for i in range(s.start, s.end + 1)],
-                annotated=True,
                 heading=s.heading,
-                body_html=md.markdown(s.body_md) if s.body_md else "",
+                pieces=build_section_pieces(s.start, s.end, s.raw_body, line_tuple),
             ))
     else:
         print(f"Warning: {canticle} {number:02d} commentary headings don't tile "
               f"1..{n} without gaps; showing the canto unannotated")
-        blocks.append(Block(start=1, end=n, lines=[line_tuple(i) for i in range(1, n + 1)]))
+        blocks.append(SectionBlock(start=1, end=n, heading="", pieces=[
+            Piece(start=1, end=n, lines=[line_tuple(i) + (False,) for i in range(1, n + 1)]),
+        ]))
 
     conclusion_heading, conclusion_html = "", ""
     if conclusion:

@@ -277,6 +277,13 @@ ul.canto-row a.active {
     font-weight: 400;
 }
 
+/* a section can hold several units: quote+commentary pieces, and plain
+   (commentary-less) pieces for lines no quote in the section touches */
+
+.unit + .unit {
+    margin-top: 1rem;
+}
+
 /* bilingual line-by-line canto text */
 
 .bilingual {
@@ -286,17 +293,32 @@ ul.canto-row a.active {
     padding: 1rem 1.25rem;
 }
 
-.segment.plain .bilingual {
+.unit.plain .bilingual {
     background: transparent;
     border-style: dashed;
 }
 
-.segment.plain .text {
+.unit.plain .text {
     color: var(--dim-fg);
 }
 
-.segment.plain .lineno a {
+.unit.plain .lineno a {
     color: var(--dim-fg);
+}
+
+/* a quoted line inside an annotated unit that the commentary doesn't
+   directly quote (a small gap between two quotes in the same run) */
+
+.unit.annotated .line.unquoted .text {
+    color: var(--dim-fg);
+}
+
+/* an annotated unit with commentary merges its bilingual block and its
+   commentary into one bordered block, split by an accent rule */
+
+.unit.annotated:not(.no-commentary) .bilingual {
+    border-radius: 12px 12px 0 0;
+    border-bottom: none;
 }
 
 .line {
@@ -332,7 +354,6 @@ ul.canto-row a.active {
 }
 
 .text[lang="it"] {
-    font-style: italic;
     color: var(--fg);
 }
 
@@ -351,7 +372,7 @@ ul.canto-row a.active {
 .commentary {
     background: var(--panel-bg);
     border: 1px solid var(--border);
-    border-top: none;
+    border-top-color: var(--accent);
     border-radius: 0 0 12px 12px;
     padding: 1rem 1.25rem;
 }

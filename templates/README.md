@@ -5,7 +5,7 @@ the static site published to GitHub Pages.
 
 file|description
 ----|----
-[canto.html](canto.html) | per-canto page: the canto's full Italian/Japanese text, side by side line by line, split into blocks by the commentary's sections — an annotated block shows that section's heading and commentary prose below its lines, an unannotated block (no commentary covers those lines) shows the lines alone, dimmed
+[canto.html](canto.html) | per-canto page: the canto's full Italian/Japanese text, side by side line by line, grouped under the commentary's section headings — each section holds one or more units: an annotated unit merges a quoted line range with the commentary prose that follows it into one block, a plain unit (no quote in that section covers those lines) shows the lines alone, dimmed
 [part_index.html](part_index.html) | per-canticle index page (`{canticle}/index.html`): links to every canto, with its commentary's title
 [index.html](index.html) | landing page
 [_sidebar.html](_sidebar.html) | shared sidebar/navigation include
@@ -26,9 +26,16 @@ tile cleanly (a future model's output, say) falls back to one unannotated
 block holding the whole text, with a warning at build time, rather than
 mis-attributing commentary to the wrong lines.
 
-Each block's commentary prose has its quote blocks (the `> N text` /
-`> （trans）` pairs already shown in the bilingual table) stripped before
-being rendered from Markdown, so nothing is duplicated on the page.
+Within a section, the commentary quotes the original in one or more
+`> N text` / `> （trans）` runs, each immediately followed by the prose
+discussing it. `build.py` pairs each run with that prose into one unit,
+spanning from the run's first to last quoted line (so a couple of
+unquoted lines between two quotes in the same run stay inside that unit,
+shown dimmed); any line range the section's commentary never quotes at
+all becomes its own plain unit. Because a commentary occasionally quotes
+out of poem order (drawing an earlier line in as an example after
+discussing a later one), units are placed by line position, not by where
+their quote appears in the file.
 
 Line numbers (`#L12`) and section headings (`#s1`) are anchors, so other
 cantos or off-site commentary can link straight to a specific line or
