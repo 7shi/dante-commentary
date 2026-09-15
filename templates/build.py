@@ -55,6 +55,8 @@ HEAD_RE = re.compile(
     r"(?:（(?P<start>\d+)(?:[～\-](?P<end>\d+))?行）)?\s*$"
 )
 
+TITLE_PREFIX_RE = re.compile(r"^ダンテ『神曲』.+?篇第\d+歌――")
+
 
 @dataclass
 class Section:
@@ -105,6 +107,7 @@ def parse_commentary(text: str) -> tuple[str, str, list[Section], tuple[str, str
     parts = re.split(r"\n(?=## )", text.strip())
     preamble_lines = parts[0].splitlines()
     title = preamble_lines[0].lstrip("#").strip() if preamble_lines and preamble_lines[0].startswith("#") else ""
+    title = TITLE_PREFIX_RE.sub("", title)
     intro_md = "\n".join(preamble_lines[1:]).strip()
 
     sections: list[Section] = []
