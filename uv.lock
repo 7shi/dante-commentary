@@ -537,8 +537,8 @@ wheels = [
 
 [[package]]
 name = "llm7shi"
-version = "0.18.0"
-source = { git = "https://github.com/7shi/llm7shi.git#cb24c725a7c05318e6d5e7f7bfc582e277919f11" }
+version = "0.18.1"
+source = { git = "https://github.com/7shi/llm7shi.git#5a9ff0335ebd05970585792422de521d832d68da" }
 dependencies = [
     { name = "colorama" },
     { name = "google-genai" },

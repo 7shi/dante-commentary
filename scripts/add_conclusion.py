@@ -76,7 +76,7 @@ def main() -> int:
     client = None if args.dry_run else Client(model=args.model, show_params=False, keep_history=False)
 
     added = skipped = 0
-    total_usage = None
+    usages = []
     for canticle, canto, path in targets:
         commentary = path.read_text()
         if CLOSING_RE.search(commentary):
@@ -95,7 +95,7 @@ def main() -> int:
         print()
         conclusion, usage = generate_conclusion(client, canticle, canto, commentary)
         if usage:
-            total_usage = usage if total_usage is None else total_usage + usage
+            usages.append(usage)
         if not conclusion.startswith("## "):
             print(f"  unexpected response, skipping:\n{conclusion}", file=sys.stderr)
             continue
@@ -105,8 +105,8 @@ def main() -> int:
 
     print(f"\nAdded {added} 結び section(s), skipped {skipped} already-closed file(s)"
           + (" (dry run, nothing written)" if args.dry_run else ""))
-    if total_usage:
-        print(f"\n--- Total Usage ---\n{total_usage}")
+    if usages:
+        print(f"\n--- Total Usage ---\n{sum(usages)}")
     return 0
 
 

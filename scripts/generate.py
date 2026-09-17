@@ -59,12 +59,11 @@ def is_translated(trans: str, original: str) -> bool:
     return bool(trans) and trans != original and bool(JAPANESE_RE.search(trans))
 
 
-def report_usage(response, total):
-    """Print this call's usage and fold it into the running total."""
+def report_usage(response, usages: list):
+    """Print this call's usage and collect it for the running total."""
     if response.usage:
         print(f"\n{response.usage}")
-        total = response.usage if total is None else total + response.usage
-    return total
+        usages.append(response.usage)
 
 
 def canto_text(lines) -> str:
@@ -132,7 +131,7 @@ def parse_filled(filled: str, missing: set[int], lines) -> dict[int, str]:
 
 
 def generate(canticle: str, canto: int, args: argparse.Namespace):
-    total_usage = None
+    usages = []
     lines = ref(f"{canticle} {canto}")
     text = canto_text(lines)
     canticle_name = CANTICLE_NAMES.get(canticle, canticle)
@@ -159,7 +158,7 @@ def generate(canticle: str, canto: int, args: argparse.Namespace):
             prompt = PROMPT.format(canticle_name=canticle_name, number=canto)
             response = client([text, prompt])
             commentary = response.text
-            total_usage = report_usage(response, total_usage)
+            report_usage(response, usages)
             out_dir.mkdir(parents=True, exist_ok=True)
             out_path.write_text(commentary)
             print(f"\nSaved to {out_path}")
@@ -188,7 +187,7 @@ def generate(canticle: str, canto: int, args: argparse.Namespace):
         response = client(
             [interleaved_text(lines, translations, PLACEHOLDER), prompt]
         )
-        total_usage = report_usage(response, total_usage)
+        report_usage(response, usages)
         if not (added := parse_filled(response.text, missing, lines)):
             print("\nno progress, giving up", file=sys.stderr)
             break
@@ -197,7 +196,7 @@ def generate(canticle: str, canto: int, args: argparse.Namespace):
     save()  # in case the loop ended before any round wrote the file
     if remaining := sorted(line.no for line in lines if line.no not in translations):
         print(f"\nstill untranslated: {remaining}", file=sys.stderr)
-    return total_usage
+    return sum(usages) if usages else None
 
 
 def main():
@@ -237,14 +236,13 @@ def main():
     if err := check_canto_spec([args.canticle], args.canto):
         parser.error(err)
 
-    total_usage = None
-    for canto in select_cantos(args.canticle, args.canto):
-        usage = generate(args.canticle, canto, args)
-        if usage:
-            total_usage = usage if total_usage is None else total_usage + usage
-
-    if total_usage:
-        print(f"\n--- Total Usage ---\n{total_usage}")
+    usages = [
+        usage
+        for canto in select_cantos(args.canticle, args.canto)
+        if (usage := generate(args.canticle, canto, args))
+    ]
+    if usages:
+        print(f"\n--- Total Usage ---\n{sum(usages)}")
 
 
 if __name__ == "__main__":
