@@ -46,6 +46,7 @@ from typing import Dict, List, Tuple
 from dante_corpus import QuoteSpan, canto as get_canto, ref
 from dante_corpus.api import CANTO_SPEC_HELP, check_canto_spec, select_cantos
 from llm7shi import Client
+from llm7shi.usage import append_usage, find_usage_file, format_usage_line, parse_usage_file, today
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -157,7 +158,7 @@ def fix_segment(
     numbers: List[int],
     source_lines: List[str],
     translation_lines: List[str],
-) -> str:
+):
     messages = [
         f"[Source text in Italian, one numbered line per line]\n"
         f"{number_lines(numbers, source_lines)}",
@@ -165,7 +166,8 @@ def fix_segment(
         f"{number_lines(numbers, translation_lines)}",
         INSTRUCTIONS,
     ]
-    return client(messages).text.strip()
+    response = client(messages)
+    return response.text.strip(), response.usage
 
 
 def check(numbers: List[int], translation_lines: List[str], response: str,
@@ -267,6 +269,7 @@ def main() -> int:
 
     violations: List[Tuple[str, List[str], float]] = []
     changed = processed = 0
+    usages = []
 
     for canticle, canto, path in targets:
         try:
@@ -335,9 +338,12 @@ def main() -> int:
             print(f"\n{label} -> fixing quotation marks "
                   f"(lines {b['start_line']}-{b['end_line']})")
 
-            response = fix_segment(
+            response, usage = fix_segment(
                 client, numbers[part], source_lines[part], translations[part],
             )
+            if usage:
+                usages.append(usage)
+                append_usage(usage, args.model, find_usage_file())
 
             problems, drift = check(numbers[part], translations[part], response, want)
             if problems:
@@ -363,6 +369,16 @@ def main() -> int:
         print(f"Violations: {len(violations)}/{processed + len(violations)}")
         for label, problems, drift in violations:
             print(f"  {label} {', '.join(problems)} (drift {drift * 100:.1f}%)")
+
+        if usages:
+            print(f"\n--- Total Usage ---\n{sum(usages)}")
+
+            usage_path = find_usage_file()
+            totals = parse_usage_file(usage_path)
+            date = today()
+            print(f"\n# {date}")
+            for model, model_usage in totals[date].items():
+                print(format_usage_line(model, model_usage))
 
     return 0
 

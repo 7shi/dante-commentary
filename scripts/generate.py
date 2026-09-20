@@ -12,6 +12,7 @@ from pathlib import Path
 from dante_corpus import ref
 from dante_corpus.api import CANTO_SPEC_HELP, check_canto_spec, select_cantos
 from llm7shi import Client
+from llm7shi.usage import append_usage, find_usage_file, format_usage_line, parse_usage_file, today
 
 CANTICLE_NAMES = {
     "inferno": "地獄篇",
@@ -196,7 +197,11 @@ def generate(canticle: str, canto: int, args: argparse.Namespace):
     save()  # in case the loop ended before any round wrote the file
     if remaining := sorted(line.no for line in lines if line.no not in translations):
         print(f"\nstill untranslated: {remaining}", file=sys.stderr)
-    return sum(usages) if usages else None
+
+    total_usage = sum(usages) if usages else None
+    if total_usage:
+        append_usage(total_usage, args.model, find_usage_file())
+    return total_usage
 
 
 def main():
@@ -243,6 +248,13 @@ def main():
     ]
     if usages:
         print(f"\n--- Total Usage ---\n{sum(usages)}")
+
+        usage_path = find_usage_file()
+        totals = parse_usage_file(usage_path)
+        date = today()
+        print(f"\n# {date}")
+        for model, model_usage in totals[date].items():
+            print(format_usage_line(model, model_usage))
 
 
 if __name__ == "__main__":

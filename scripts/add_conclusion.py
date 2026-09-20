@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 from dante_corpus.api import CANTO_SPEC_HELP, check_canto_spec, select_cantos
 from llm7shi import Client
+from llm7shi.usage import append_usage, find_usage_file, format_usage_line, parse_usage_file, today
 
 CANTICLE_NAMES = {
     "inferno": "地獄篇",
@@ -96,6 +97,7 @@ def main() -> int:
         conclusion, usage = generate_conclusion(client, canticle, canto, commentary)
         if usage:
             usages.append(usage)
+            append_usage(usage, args.model, find_usage_file())
         if not conclusion.startswith("## "):
             print(f"  unexpected response, skipping:\n{conclusion}", file=sys.stderr)
             continue
@@ -107,6 +109,13 @@ def main() -> int:
           + (" (dry run, nothing written)" if args.dry_run else ""))
     if usages:
         print(f"\n--- Total Usage ---\n{sum(usages)}")
+
+        usage_path = find_usage_file()
+        totals = parse_usage_file(usage_path)
+        date = today()
+        print(f"\n# {date}")
+        for model, model_usage in totals[date].items():
+            print(format_usage_line(model, model_usage))
     return 0
 
 
