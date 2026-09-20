@@ -140,7 +140,10 @@ def normalize_file_reconstruct(path: Path, dry_run: bool) -> bool:
     lines = path.read_text().splitlines()
     out = list(lines)
     changed = False
-    for start, end in find_blocks(lines):
+    # Back to front: a rebuilt block can be longer than the original (a
+    # missing separator is inserted), which would shift every later block's
+    # position in out and overwrite the prose between them.
+    for start, end in reversed(find_blocks(lines)):
         block = lines[start:end]
         rebuilt = rebuild_block(path, canticle, number, translations, block)
         if rebuilt is not None and rebuilt != block:
