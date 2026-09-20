@@ -111,6 +111,11 @@ def rebuild_block(path: Path, canticle: str, number: int,
         out.append(f"> {n} {originals[n]}  ")
         out.append(f"> （{translations[n - 1]}）")
         i += 2
+        # Insert exactly one blank quote line between this pair and the next
+        # one when the source had none; an existing separator (or a gap that
+        # runs into prose) is preserved as-is by the pass-through branch above.
+        if i < len(block) and ORIG_RE.match(block[i]):
+            out.append(SEPARATOR)
     return out
 
 
