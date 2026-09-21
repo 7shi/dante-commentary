@@ -27,6 +27,9 @@ CANTICLES = list(CANTICLE_NAMES)
 
 CLOSING_RE = re.compile(r"^## (結び|おわりに)", re.MULTILINE)
 
+# Set the path only when usage should be recorded
+USAGE_PATH = None
+
 PROMPT = """
 添付はダンテ『神曲』{canticle_name}第{number}歌の寓意・背景を解説した記事です。この記事の末尾に置く結びのセクションを書いてください。
 
@@ -46,6 +49,7 @@ def generate_conclusion(client: Client, canticle: str, canto: int, commentary: s
 
 
 def main() -> int:
+    global USAGE_PATH
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("canticles", nargs="+", choices=CANTICLES, metavar="canticle",
                         help="Canticle(s) to process: inferno, purgatorio, or paradiso")
@@ -58,12 +62,18 @@ def main() -> int:
     parser.add_argument("-n", "--dry-run", action="store_true",
                         help="Report which files would be changed, without calling the model "
                              "or writing anything")
+    parser.add_argument("--save-usage", action="store_true",
+                        help="Record usage regardless of model name")
     args = parser.parse_args()
 
     if not args.dry_run and not args.model:
         parser.error("-m/--model is required unless --dry-run is given")
     if err := check_canto_spec(args.canticles, args.canto):
         parser.error(err)
+
+    if args.model and (args.model.startswith("openai:") or args.model.startswith("gpt-")
+                        or args.save_usage):
+        USAGE_PATH = find_usage_file()
 
     targets: list[tuple[str, int, Path]] = []
     for canticle in args.canticles:
@@ -97,7 +107,8 @@ def main() -> int:
         conclusion, usage = generate_conclusion(client, canticle, canto, commentary)
         if usage:
             usages.append(usage)
-            append_usage(usage, args.model, find_usage_file())
+            if USAGE_PATH is not None:
+                append_usage(usage, args.model, USAGE_PATH)
         if not conclusion.startswith("## "):
             print(f"  unexpected response, skipping:\n{conclusion}", file=sys.stderr)
             continue
@@ -108,8 +119,10 @@ def main() -> int:
     print(f"\nAdded {added} 結び section(s), skipped {skipped} already-closed file(s)"
           + (" (dry run, nothing written)" if args.dry_run else ""))
     if usages:
-        print(f"\n--- Total Usage ---\n{sum(usages)}\n")
-        print_today_totals()
+        print(f"\n--- Total Usage ---\n{sum(usages)}")
+        if USAGE_PATH is not None:
+            print()
+            print_today_totals(USAGE_PATH)
     return 0
 
 

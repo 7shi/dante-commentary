@@ -45,6 +45,9 @@ TRANSLATE_PROMPT = """
 
 PLACEHOLDER = "**NEED TRANSLATE**"
 
+# Set the path only when usage should be recorded
+USAGE_PATH = None
+
 QUOTE_RE = re.compile(r"^>\s*(\d+)\s+(.*?)\s*$")
 TRANS_RE = re.compile(r"^>\s*[（(](.*)[）)][」』]*\s*$")
 FILLED_RE = re.compile(r"^\s*(\d+)\s+(.+?)\s*$")
@@ -202,12 +205,13 @@ def generate(canticle: str, canto: int, args: argparse.Namespace):
         print(f"\nstill untranslated: {remaining}", file=sys.stderr)
 
     total_usage = sum(usages) if usages else None
-    if total_usage:
-        append_usage(total_usage, args.model, find_usage_file())
+    if total_usage and USAGE_PATH is not None:
+        append_usage(total_usage, args.model, USAGE_PATH)
     return total_usage
 
 
 def main():
+    global USAGE_PATH
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "canticle",
@@ -239,10 +243,18 @@ def main():
         required=True,
         help="Output directory holding <canticle>/<NN>.md",
     )
+    parser.add_argument(
+        "--save-usage",
+        action="store_true",
+        help="Record usage regardless of model name",
+    )
     args = parser.parse_args()
 
     if err := check_canto_spec([args.canticle], args.canto):
         parser.error(err)
+
+    if args.model.startswith("openai:") or args.model.startswith("gpt-") or args.save_usage:
+        USAGE_PATH = find_usage_file()
 
     usages = [
         usage
@@ -250,8 +262,10 @@ def main():
         if (usage := generate(args.canticle, canto, args))
     ]
     if usages:
-        print(f"\n--- Total Usage ---\n{sum(usages)}\n")
-        print_today_totals()
+        print(f"\n--- Total Usage ---\n{sum(usages)}")
+        if USAGE_PATH is not None:
+            print()
+            print_today_totals(USAGE_PATH)
 
 
 if __name__ == "__main__":

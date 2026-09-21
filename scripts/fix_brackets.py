@@ -85,6 +85,9 @@ QUOTE_CHARS = "«»“”‘’「」『』\"'"
 
 QUOTES = str.maketrans({c: None for c in QUOTE_CHARS})
 
+# Set the path only when usage should be recorded
+USAGE_PATH = None
+
 # The source's own literal marks - never legitimate in Japanese text, so a
 # leftover one almost always means the segment was never actually
 # translated (the Italian leaked through verbatim), not a quote-style slip
@@ -228,6 +231,7 @@ def parse_segment_arg(value: str) -> List[int]:
 
 
 def main() -> int:
+    global USAGE_PATH
     parser = argparse.ArgumentParser(
         description="Restore the quotation marks of an existing translation"
     )
@@ -249,11 +253,18 @@ def main() -> int:
                              "writing anything - use it to locate a problem left over from a "
                              "previous run whose output has scrolled away")
 
+    parser.add_argument("--save-usage", action="store_true",
+                        help="Record usage regardless of model name")
+
     args = parser.parse_args()
     if not args.check and not args.model:
         parser.error("-m/--model is required unless --check is given")
     if err := check_canto_spec(args.canticles, args.canto):
         parser.error(err)
+
+    if args.model and (args.model.startswith("openai:") or args.model.startswith("gpt-")
+                        or args.save_usage):
+        USAGE_PATH = find_usage_file()
 
     # Segments are independent, so no turn is carried over into the next
     client = None if args.check else Client(model=args.model, show_params=False, keep_history=False)
@@ -343,7 +354,8 @@ def main() -> int:
             )
             if usage:
                 usages.append(usage)
-                append_usage(usage, args.model, find_usage_file())
+                if USAGE_PATH is not None:
+                    append_usage(usage, args.model, USAGE_PATH)
 
             problems, drift = check(numbers[part], translations[part], response, want)
             if problems:
@@ -371,8 +383,10 @@ def main() -> int:
             print(f"  {label} {', '.join(problems)} (drift {drift * 100:.1f}%)")
 
         if usages:
-            print(f"\n--- Total Usage ---\n{sum(usages)}\n")
-            print_today_totals()
+            print(f"\n--- Total Usage ---\n{sum(usages)}")
+            if USAGE_PATH is not None:
+                print()
+                print_today_totals(USAGE_PATH)
 
     return 0
 
