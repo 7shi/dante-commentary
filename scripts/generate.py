@@ -12,7 +12,7 @@ from pathlib import Path
 from dante_corpus import ref
 from dante_corpus.api import CANTO_SPEC_HELP, check_canto_spec, select_cantos
 from llm7shi import Client
-from llm7shi.usage import append_usage, find_usage_file, format_usage_line, parse_usage_file, today
+from llm7shi.usage import append_usage, find_usage_file, print_today_totals
 
 CANTICLE_NAMES = {
     "inferno": "地獄篇",
@@ -250,14 +250,8 @@ def main():
         if (usage := generate(args.canticle, canto, args))
     ]
     if usages:
-        print(f"\n--- Total Usage ---\n{sum(usages)}")
-
-        usage_path = find_usage_file()
-        totals = parse_usage_file(usage_path)
-        date = today()
-        print(f"\n# {date}")
-        for model, model_usage in totals[date].items():
-            print(format_usage_line(model, model_usage))
+        print(f"\n--- Total Usage ---\n{sum(usages)}\n")
+        print_today_totals()
 
 
 if __name__ == "__main__":
