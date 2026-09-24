@@ -170,7 +170,7 @@ def fix_segment(
         INSTRUCTIONS,
     ]
     response = client(messages)
-    return response.text.strip(), response.usage
+    return response.text.strip()
 
 
 def check(numbers: List[int], translation_lines: List[str], response: str,
@@ -262,12 +262,13 @@ def main() -> int:
     if err := check_canto_spec(args.canticles, args.canto):
         parser.error(err)
 
-    if args.model and (args.model.startswith("openai:") or args.model.startswith("gpt-")
-                        or args.save_usage):
+    if args.model and (args.model.startswith(("openai:", "gpt-")) or args.save_usage):
         USAGE_PATH = find_usage_file()
 
     # Segments are independent, so no turn is carried over into the next
-    client = None if args.check else Client(model=args.model, show_params=False, keep_history=False)
+    client = None if args.check else Client(
+        model=args.model, show_params=False, keep_history=False, show_usage=True,
+    )
 
     targets: List[Tuple[str, int, Path]] = []
     for canticle in args.canticles:
@@ -280,98 +281,99 @@ def main() -> int:
 
     violations: List[Tuple[str, List[str], float]] = []
     changed = processed = 0
-    usages = []
 
-    for canticle, canto, path in targets:
-        try:
-            boundaries = load_segments(canticle)[canto]
-            source = {line.no: line.text for line in ref(f"{canticle} {canto}")}
-            spans = flatten(get_canto(canticle, canto).quotes())
-            translations = load_translations(path)
-        except (OSError, ValueError, KeyError) as e:
-            print(f"{path}: {e}", file=sys.stderr)
-            return 1
+    try:
+        for canticle, canto, path in targets:
+            try:
+                boundaries = load_segments(canticle)[canto]
+                source = {line.no: line.text for line in ref(f"{canticle} {canto}")}
+                spans = flatten(get_canto(canticle, canto).quotes())
+                translations = load_translations(path)
+            except (OSError, ValueError, KeyError) as e:
+                print(f"{path}: {e}", file=sys.stderr)
+                return 1
 
-        numbers = sorted(source)
-        if len(translations) != len(numbers):
-            print(f"{path}: line count does not match {canticle} {canto} "
-                  f"({len(translations)} lines, source has {len(numbers)})", file=sys.stderr)
-            return 1
+            numbers = sorted(source)
+            if len(translations) != len(numbers):
+                print(f"{path}: line count does not match {canticle} {canto} "
+                      f"({len(translations)} lines, source has {len(numbers)})", file=sys.stderr)
+                return 1
 
-        source_lines = [source[no] for no in numbers]
-        index = {no: i for i, no in enumerate(numbers)}
+            source_lines = [source[no] for no in numbers]
+            index = {no: i for i, no in enumerate(numbers)}
 
-        for segment, b in enumerate(boundaries, 1):
-            if args.segment and segment not in args.segment:
-                continue
+            for segment, b in enumerate(boundaries, 1):
+                if args.segment and segment not in args.segment:
+                    continue
 
-            first, last = index[b["start_line"]], index[b["end_line"]]
-            part = slice(first, last + 1)
+                first, last = index[b["start_line"]], index[b["end_line"]]
+                part = slice(first, last + 1)
 
-            # A segment without a quotation mark on either side has nothing to fix
-            if not has_quotes("".join(source_lines[part] + translations[part])):
-                continue
-            label = f"{canticle} {canto:2d}:{segment}"
-            want = crossing(spans, b["start_line"], b["end_line"])
+                # A segment without a quotation mark on either side has nothing to fix
+                if not has_quotes("".join(source_lines[part] + translations[part])):
+                    continue
+                label = f"{canticle} {canto:2d}:{segment}"
+                want = crossing(spans, b["start_line"], b["end_line"])
 
-            # Same structural checks fix_segment's response is held to below,
-            # run directly on the translation as it stands on disk
-            got = unmatched(translations[part])
-            foreign = foreign_marks(translations[part])
-            already_ok = got == want and not foreign
+                # Same structural checks fix_segment's response is held to below,
+                # run directly on the translation as it stands on disk
+                got = unmatched(translations[part])
+                foreign = foreign_marks(translations[part])
+                already_ok = got == want and not foreign
 
-            if args.check:
-                if not already_ok:
-                    problems = []
-                    if got != want:
-                        problems.append(f"unmatched marks {got} != {want} (closes, opens)")
-                    if foreign:
-                        problems.append(f"leftover {foreign} not converted to Japanese's quotation marks")
-                    violations.append((label, problems, 0.0))
-                    print(f"{label} (lines {b['start_line']}-{b['end_line']}): {', '.join(problems)}")
-                continue
+                if args.check:
+                    if not already_ok:
+                        problems = []
+                        if got != want:
+                            problems.append(f"unmatched marks {got} != {want} (closes, opens)")
+                        if foreign:
+                            problems.append(f"leftover {foreign} not converted to Japanese's quotation marks")
+                        violations.append((label, problems, 0.0))
+                        print(f"{label} (lines {b['start_line']}-{b['end_line']}): {', '.join(problems)}")
+                    continue
 
-            # Already matches the source's structure - sending it to the model
-            # would only risk it introducing a mark that breaks that match
-            if already_ok:
-                continue
+                # Already matches the source's structure - sending it to the model
+                # would only risk it introducing a mark that breaks that match
+                if already_ok:
+                    continue
 
-            # A leftover literal source mark usually means the segment was
-            # never actually translated, not a quote-style slip - skip it
-            # entirely rather than have fix_segment "correct" the quotes on
-            # text that is still Italian. --check keeps flagging it until it
-            # is redone by hand
-            if foreign:
-                print(f"{label} (lines {b['start_line']}-{b['end_line']}): leftover {foreign} - "
-                      f"likely untranslated, skipping")
-                continue
+                # A leftover literal source mark usually means the segment was
+                # never actually translated, not a quote-style slip - skip it
+                # entirely rather than have fix_segment "correct" the quotes on
+                # text that is still Italian. --check keeps flagging it until it
+                # is redone by hand
+                if foreign:
+                    print(f"{label} (lines {b['start_line']}-{b['end_line']}): leftover {foreign} - "
+                          f"likely untranslated, skipping")
+                    continue
 
-            print(f"\n{label} -> fixing quotation marks "
-                  f"(lines {b['start_line']}-{b['end_line']})")
+                print(f"\n{label} -> fixing quotation marks "
+                      f"(lines {b['start_line']}-{b['end_line']})")
 
-            response, usage = fix_segment(
-                client, numbers[part], source_lines[part], translations[part],
-            )
-            if usage:
-                usages.append(usage)
-                if USAGE_PATH is not None:
-                    append_usage(usage, args.model, USAGE_PATH)
+                response = fix_segment(
+                    client, numbers[part], source_lines[part], translations[part],
+                )
 
-            problems, drift = check(numbers[part], translations[part], response, want)
-            if problems:
-                violations.append((label, problems, drift))
-                print(f"  violation: {', '.join(problems)}")
-                print("  left unchanged")
-                continue
-            print(f"  drift: {drift * 100:.1f}%")
+                problems, drift = check(numbers[part], translations[part], response, want)
+                if problems:
+                    violations.append((label, problems, drift))
+                    print(f"  violation: {', '.join(problems)}")
+                    print("  left unchanged")
+                    continue
+                print(f"  drift: {drift * 100:.1f}%")
 
-            _, texts = parse_numbered(response)
-            changed += sum(a != b for a, b in zip(translations[part], texts))
-            translations[part] = texts
-            processed += 1
+                _, texts = parse_numbered(response)
+                changed += sum(a != b for a, b in zip(translations[part], texts))
+                translations[part] = texts
+                processed += 1
 
-            if not args.dry_run:
-                save_translations(path, translations)
+                if not args.dry_run:
+                    save_translations(path, translations)
+    finally:
+        # Record silently so an interrupted run still logs what it consumed;
+        # the report below is printed only on normal completion
+        if client and client.usages and USAGE_PATH is not None:
+            append_usage(sum(client.usages), args.model, USAGE_PATH)
 
     if args.check:
         print(f"\n{len(violations)} segment(s) already mismatch the source's structure")
@@ -382,8 +384,8 @@ def main() -> int:
         for label, problems, drift in violations:
             print(f"  {label} {', '.join(problems)} (drift {drift * 100:.1f}%)")
 
-        if usages:
-            print(f"\n--- Total Usage ---\n{sum(usages)}")
+        if client.usages:
+            print(f"\n--- Total Usage ---\n{sum(client.usages)}")
             if USAGE_PATH is not None:
                 print()
                 print_today_totals(USAGE_PATH, models=[args.model])

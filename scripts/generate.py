@@ -66,13 +66,6 @@ def is_translated(trans: str, original: str) -> bool:
     return bool(trans) and trans != original and bool(JAPANESE_RE.search(trans))
 
 
-def report_usage(response, usages: list):
-    """Print this call's usage and collect it for the running total."""
-    if response.usage:
-        print(f"\n{response.usage}")
-        usages.append(response.usage)
-
-
 def canto_text(lines) -> str:
     return "\n".join(f"{line.no} {line.text}" for line in lines)
 
@@ -137,8 +130,7 @@ def parse_filled(filled: str, missing: set[int], lines) -> dict[int, str]:
     return translations
 
 
-def generate(canticle: str, canto: int, args: argparse.Namespace):
-    usages = []
+def generate(client: Client, canticle: str, canto: int, args: argparse.Namespace):
     lines = ref(f"{canticle} {canto}")
     text = canto_text(lines)
     canticle_name = CANTICLE_NAMES.get(canticle, canticle)
@@ -146,12 +138,6 @@ def generate(canticle: str, canto: int, args: argparse.Namespace):
     out_dir = args.dir / canticle
     out_path = out_dir / f"{canto:02d}.md"
     trans_path = out_dir / f"{canto:02d}.txt"
-    client = Client(
-        model=args.model,
-        include_thoughts=not args.no_think,
-        show_params=False,
-        keep_history=False,
-    )
 
     if trans_path.exists():
         # Resume: the saved file already holds every translation extracted so far.
@@ -165,7 +151,6 @@ def generate(canticle: str, canto: int, args: argparse.Namespace):
             prompt = PROMPT.format(canticle_name=canticle_name, number=canto)
             response = client([text, prompt])
             commentary = response.text
-            report_usage(response, usages)
             out_dir.mkdir(parents=True, exist_ok=True)
             out_path.write_text(commentary)
             print(f"\nSaved to {out_path}")
@@ -194,7 +179,6 @@ def generate(canticle: str, canto: int, args: argparse.Namespace):
         response = client(
             [interleaved_text(lines, translations, PLACEHOLDER), prompt]
         )
-        report_usage(response, usages)
         if not (added := parse_filled(response.text, missing, lines)):
             print("\nno progress, giving up", file=sys.stderr)
             break
@@ -203,11 +187,6 @@ def generate(canticle: str, canto: int, args: argparse.Namespace):
     save()  # in case the loop ended before any round wrote the file
     if remaining := sorted(line.no for line in lines if line.no not in translations):
         print(f"\nstill untranslated: {remaining}", file=sys.stderr)
-
-    total_usage = sum(usages) if usages else None
-    if total_usage and USAGE_PATH is not None:
-        append_usage(total_usage, args.model, USAGE_PATH)
-    return total_usage
 
 
 def main():
@@ -253,16 +232,28 @@ def main():
     if err := check_canto_spec([args.canticle], args.canto):
         parser.error(err)
 
-    if args.model.startswith("openai:") or args.model.startswith("gpt-") or args.save_usage:
+    if args.model.startswith(("openai:", "gpt-")) or args.save_usage:
         USAGE_PATH = find_usage_file()
 
-    usages = [
-        usage
-        for canto in select_cantos(args.canticle, args.canto)
-        if (usage := generate(args.canticle, canto, args))
-    ]
-    if usages:
-        print(f"\n--- Total Usage ---\n{sum(usages)}")
+    client = Client(
+        model=args.model,
+        include_thoughts=not args.no_think,
+        show_params=False,
+        keep_history=False,
+        show_usage=True,
+    )
+
+    try:
+        for canto in select_cantos(args.canticle, args.canto):
+            generate(client, args.canticle, canto, args)
+    finally:
+        # Record silently so an interrupted run still logs what it consumed;
+        # the report below is printed only on normal completion
+        if client.usages and USAGE_PATH is not None:
+            append_usage(sum(client.usages), args.model, USAGE_PATH)
+
+    if client.usages:
+        print(f"\n--- Total Usage ---\n{sum(client.usages)}")
         if USAGE_PATH is not None:
             print()
             print_today_totals(USAGE_PATH, models=[args.model])

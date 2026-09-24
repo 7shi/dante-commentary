@@ -43,9 +43,7 @@ PROMPT = """
 def generate_conclusion(client: Client, canticle: str, canto: int, commentary: str):
     prompt = PROMPT.format(canticle_name=CANTICLE_NAMES[canticle], number=canto)
     response = client([commentary, prompt])
-    if response.usage:
-        print(f"\n{response.usage}")
-    return response.text.strip(), response.usage
+    return response.text.strip()
 
 
 def main() -> int:
@@ -71,8 +69,7 @@ def main() -> int:
     if err := check_canto_spec(args.canticles, args.canto):
         parser.error(err)
 
-    if args.model and (args.model.startswith("openai:") or args.model.startswith("gpt-")
-                        or args.save_usage):
+    if args.model and (args.model.startswith(("openai:", "gpt-")) or args.save_usage):
         USAGE_PATH = find_usage_file()
 
     targets: list[tuple[str, int, Path]] = []
@@ -84,42 +81,45 @@ def main() -> int:
     if not targets:
         parser.error("no <canticle>/<NN>.md files found under the given directory")
 
-    client = None if args.dry_run else Client(model=args.model, show_params=False, keep_history=False)
+    client = None if args.dry_run else Client(
+        model=args.model, show_params=False, keep_history=False, show_usage=True,
+    )
 
     added = skipped = 0
-    usages = []
-    for canticle, canto, path in targets:
-        commentary = path.read_text()
-        if CLOSING_RE.search(commentary):
-            skipped += 1
-            continue
+    try:
+        for canticle, canto, path in targets:
+            commentary = path.read_text()
+            if CLOSING_RE.search(commentary):
+                skipped += 1
+                continue
 
-        if args.dry_run:
-            print(f"{path}: would generate 結び")
+            if args.dry_run:
+                print(f"{path}: would generate 結び")
+                added += 1
+                continue
+
+            print()
+            print("=" * 40)
+            print(f"{path}: generating 結び")
+            print("=" * 40)
+            print()
+            conclusion = generate_conclusion(client, canticle, canto, commentary)
+            if not conclusion.startswith("## "):
+                print(f"  unexpected response, skipping:\n{conclusion}", file=sys.stderr)
+                continue
+
+            path.write_text(commentary.rstrip("\n") + "\n\n" + conclusion + "\n")
             added += 1
-            continue
-
-        print()
-        print("=" * 40)
-        print(f"{path}: generating 結び")
-        print("=" * 40)
-        print()
-        conclusion, usage = generate_conclusion(client, canticle, canto, commentary)
-        if usage:
-            usages.append(usage)
-            if USAGE_PATH is not None:
-                append_usage(usage, args.model, USAGE_PATH)
-        if not conclusion.startswith("## "):
-            print(f"  unexpected response, skipping:\n{conclusion}", file=sys.stderr)
-            continue
-
-        path.write_text(commentary.rstrip("\n") + "\n\n" + conclusion + "\n")
-        added += 1
+    finally:
+        # Record silently so an interrupted run still logs what it consumed;
+        # the report below is printed only on normal completion
+        if client and client.usages and USAGE_PATH is not None:
+            append_usage(sum(client.usages), args.model, USAGE_PATH)
 
     print(f"\nAdded {added} 結び section(s), skipped {skipped} already-closed file(s)"
           + (" (dry run, nothing written)" if args.dry_run else ""))
-    if usages:
-        print(f"\n--- Total Usage ---\n{sum(usages)}")
+    if client and client.usages:
+        print(f"\n--- Total Usage ---\n{sum(client.usages)}")
         if USAGE_PATH is not None:
             print()
             print_today_totals(USAGE_PATH, models=[args.model])
